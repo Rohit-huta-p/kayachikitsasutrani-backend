@@ -10,6 +10,9 @@ const VALID = {
   ADMIN_EMAIL: 'admin@example.com',
   ADMIN_PASSWORD: 'verystrong',
   ADMIN_NAME: 'Admin',
+  CLOUDINARY_CLOUD_NAME: 'demo',
+  CLOUDINARY_API_KEY: '123456789012345',
+  CLOUDINARY_API_SECRET: 'secretsecretsecret',
 };
 
 describe('parseEnv', () => {
@@ -33,5 +36,15 @@ describe('parseEnv', () => {
   it('parses comma-separated FRONTEND_ORIGIN into a list', () => {
     const env = parseEnv({ ...VALID, FRONTEND_ORIGIN: 'http://a.test,http://b.test' });
     expect(env.FRONTEND_ORIGINS).toEqual(['http://a.test', 'http://b.test']);
+  });
+
+  it('throws on missing CLOUDINARY_CLOUD_NAME', () => {
+    const bad = { ...VALID, CLOUDINARY_CLOUD_NAME: undefined } as unknown as Record<string, string>;
+    expect(() => parseEnv(bad)).toThrow();
+  });
+
+  it('exposes CLOUDINARY_API_SECRET', () => {
+    const env = parseEnv(VALID);
+    expect(env.CLOUDINARY_API_SECRET).toBe('secretsecretsecret');
   });
 });
