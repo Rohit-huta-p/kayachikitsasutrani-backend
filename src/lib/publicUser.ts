@@ -1,4 +1,4 @@
-import type { UserDoc } from '../models/User';
+import type { UserDoc } from '../models/User.js';
 
 export interface PublicUser {
   id: string;

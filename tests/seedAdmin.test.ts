@@ -1,9 +1,9 @@
 import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { User } from '../src/models/User';
-import { seedAdmin } from '../src/scripts/seedAdmin';
-import { comparePassword } from '../src/lib/password';
+import { User } from '../src/models/User.js';
+import { seedAdmin } from '../src/scripts/seedAdmin.js';
+import { comparePassword } from '../src/lib/password.js';
 
 let mongod: MongoMemoryServer;
 

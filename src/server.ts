@@ -3,11 +3,11 @@ import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import cookieParser from 'cookie-parser';
-import { env } from './env';
-import { connectDb } from './db';
-import { healthRouter } from './routes/health';
-import { authRouter } from './routes/auth';
-import { errorHandler } from './middleware/errorHandler';
+import { env } from './env.js';
+import { connectDb } from './db.js';
+import { healthRouter } from './routes/health.js';
+import { authRouter } from './routes/auth.js';
+import { errorHandler } from './middleware/errorHandler.js';
 
 export function buildApp(): express.Express {
   const app = express();

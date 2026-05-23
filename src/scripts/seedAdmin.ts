@@ -1,9 +1,9 @@
 import 'dotenv/config';
 import mongoose from 'mongoose';
-import { User } from '../models/User';
-import { hashPassword } from '../lib/password';
-import { env } from '../env';
-import { connectDb, disconnectDb } from '../db';
+import { User } from '../models/User.js';
+import { hashPassword } from '../lib/password.js';
+import { env } from '../env.js';
+import { connectDb, disconnectDb } from '../db.js';
 
 export interface SeedAdminInput {
   email: string;

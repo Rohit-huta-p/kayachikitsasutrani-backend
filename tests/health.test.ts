@@ -1,6 +1,6 @@
 import { describe, it, expect, beforeAll } from 'vitest';
 import request from 'supertest';
-import { buildApp } from '../src/server';
+import { buildApp } from '../src/server.js';
 
 let app: ReturnType<typeof buildApp>;
 

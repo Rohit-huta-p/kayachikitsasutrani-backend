@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { hashPassword, comparePassword } from '../src/lib/password';
+import { hashPassword, comparePassword } from '../src/lib/password.js';
 
 describe('password', () => {
   it('hashes a password to a different string', async () => {

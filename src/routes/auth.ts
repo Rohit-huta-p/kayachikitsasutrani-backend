@@ -1,12 +1,12 @@
 import { Router } from 'express';
 import { z } from 'zod';
-import { User } from '../models/User';
-import { hashPassword, comparePassword } from '../lib/password';
-import { signSession } from '../lib/jwt';
-import { setSessionCookie, clearSessionCookie } from '../lib/cookies';
-import { toPublicUser } from '../lib/publicUser';
-import { env } from '../env';
-import { requireAuth } from '../middleware/requireAuth';
+import { User } from '../models/User.js';
+import { hashPassword, comparePassword } from '../lib/password.js';
+import { signSession } from '../lib/jwt.js';
+import { setSessionCookie, clearSessionCookie } from '../lib/cookies.js';
+import { toPublicUser } from '../lib/publicUser.js';
+import { env } from '../env.js';
+import { requireAuth } from '../middleware/requireAuth.js';
 
 export const authRouter = Router();
 

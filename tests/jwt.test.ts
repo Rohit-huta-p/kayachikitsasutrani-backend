@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { signSession, verifySession } from '../src/lib/jwt';
+import { signSession, verifySession } from '../src/lib/jwt.js';
 
 const SECRET = 'a'.repeat(32);
 

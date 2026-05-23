@@ -1,9 +1,9 @@
 import type { Request, Response, NextFunction } from 'express';
-import { verifySession } from '../lib/jwt';
-import { SESSION_COOKIE_NAME } from '../lib/cookies';
-import { User } from '../models/User';
-import { toPublicUser } from '../lib/publicUser';
-import { env } from '../env';
+import { verifySession } from '../lib/jwt.js';
+import { SESSION_COOKIE_NAME } from '../lib/cookies.js';
+import { User } from '../models/User.js';
+import { toPublicUser } from '../lib/publicUser.js';
+import { env } from '../env.js';
 
 export async function requireAuth(req: Request, res: Response, next: NextFunction): Promise<void> {
   const token = req.cookies?.[SESSION_COOKIE_NAME];

@@ -1,5 +1,5 @@
 import { describe, it, expect } from 'vitest';
-import { parseEnv } from '../src/env';
+import { parseEnv } from '../src/env.js';
 
 const VALID = {
   NODE_ENV: 'development',

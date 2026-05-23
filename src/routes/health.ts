@@ -1,5 +1,5 @@
 import { Router } from 'express';
-import { mongoStateLabel } from '../db';
+import { mongoStateLabel } from '../db.js';
 
 export const healthRouter = Router();
 

@@ -2,8 +2,8 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach } from 'vitest';
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
-import { buildApp } from '../src/server';
-import { User } from '../src/models/User';
+import { buildApp } from '../src/server.js';
+import { User } from '../src/models/User.js';
 
 let mongod: MongoMemoryServer;
 let app: ReturnType<typeof buildApp>;
