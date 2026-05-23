@@ -2,6 +2,7 @@ import { describe, it, expect, beforeAll, afterAll, beforeEach, vi } from 'vites
 import request from 'supertest';
 import mongoose from 'mongoose';
 import { MongoMemoryServer } from 'mongodb-memory-server';
+import { __mocks as cloudinaryMocks } from '../__mocks__/cloudinary.js';
 
 vi.mock('cloudinary', async () => await import('../__mocks__/cloudinary.js'));
 
@@ -266,5 +267,63 @@ describe('PATCH /api/admin/shlokas/:id', () => {
       });
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_TIMINGS');
+  });
+});
+
+describe('DELETE /api/admin/shlokas/:id', () => {
+  it('deletes the shloka and calls Cloudinary destroy for each asset', async () => {
+    cloudinaryMocks.destroyMock.mockClear();
+    const body = {
+      ...VALID_BODY,
+      audio: {
+        full: { url: 'https://res.cloudinary.com/x/full.mp3', publicId: 'pf' },
+        lines: [
+          { url: 'https://res.cloudinary.com/x/l1.mp3', publicId: 'p1' },
+          { url: 'https://res.cloudinary.com/x/l2.mp3', publicId: 'p2' },
+        ],
+      },
+      image: { url: 'https://res.cloudinary.com/x/img.png', publicId: 'pi' },
+      lines: [
+        VALID_BODY.lines[0],
+        {
+          sanskrit: 'x',
+          transliteration: '',
+          words: [{ text: 'x', start: 0, end: 1 }],
+          fullTimings: [{ text: 'x', start: 0, end: 1 }],
+        },
+      ],
+    };
+    const created = await request(app).post('/api/admin/shlokas').set('Cookie', adminCookie).send(body);
+    expect(created.status).toBe(200);
+    const res = await request(app).delete(`/api/admin/shlokas/${created.body.id}`).set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+
+    // destroy called for: full audio, 2 line audios, 1 image = 4 calls
+    expect(cloudinaryMocks.destroyMock.mock.calls.length).toBe(4);
+    const publicIds = cloudinaryMocks.destroyMock.mock.calls.map((c: unknown[]) => c[0]);
+    expect(publicIds).toContain('pf');
+    expect(publicIds).toContain('p1');
+    expect(publicIds).toContain('p2');
+    expect(publicIds).toContain('pi');
+
+    const after = await Shloka.findById(created.body.id);
+    expect(after).toBeNull();
+  });
+
+  it('Cloudinary destroy failure still returns 200', async () => {
+    cloudinaryMocks.destroyMock.mockClear();
+    cloudinaryMocks.destroyMock.mockRejectedValueOnce(new Error('cloud failure'));
+    const created = await request(app).post('/api/admin/shlokas').set('Cookie', adminCookie).send(VALID_BODY);
+    const res = await request(app).delete(`/api/admin/shlokas/${created.body.id}`).set('Cookie', adminCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.ok).toBe(true);
+    const after = await Shloka.findById(created.body.id);
+    expect(after).toBeNull();
+  });
+
+  it('unknown id → 404', async () => {
+    const res = await request(app).delete('/api/admin/shlokas/507f1f77bcf86cd799439011').set('Cookie', adminCookie);
+    expect(res.status).toBe(404);
   });
 });

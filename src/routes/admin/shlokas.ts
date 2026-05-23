@@ -7,6 +7,7 @@ import { isValidSlug } from '../../lib/slug.js';
 import { encodeCursor, decodeCursor } from '../../lib/cursor.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import { requireRole } from '../../middleware/requireRole.js';
+import { deleteAsset } from '../../lib/cloudinary.js';
 
 export const adminShlokasRouter = Router();
 
@@ -197,6 +198,39 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
     if (body.lines !== undefined) doc.lines = body.lines;
     await doc.save();
     res.json(toPublicShloka(doc, { includePublicIds: true }));
+  } catch (err) {
+    next(err);
+  }
+});
+
+adminShlokasRouter.delete('/:id', async (req, res, next) => {
+  try {
+    if (!Types.ObjectId.isValid(req.params.id)) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Shloka not found' } });
+      return;
+    }
+    const doc = await Shloka.findById(req.params.id);
+    if (!doc) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Shloka not found' } });
+      return;
+    }
+    const assets: Array<{ publicId: string; resourceType: 'image' | 'video' }> = [
+      { publicId: doc.audio.full.publicId, resourceType: 'video' },
+      ...doc.audio.lines.map((l) => ({ publicId: l.publicId, resourceType: 'video' as const })),
+    ];
+    if (doc.image) assets.push({ publicId: doc.image.publicId, resourceType: 'image' });
+
+    await doc.deleteOne();
+
+    await Promise.all(
+      assets.map((a) =>
+        deleteAsset(a.publicId, a.resourceType).catch((err) => {
+          console.error(`[shloka.delete] Cloudinary destroy failed for ${a.publicId}:`, err);
+        }),
+      ),
+    );
+
+    res.json({ ok: true });
   } catch (err) {
     next(err);
   }
