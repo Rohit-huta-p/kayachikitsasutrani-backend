@@ -11,7 +11,6 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     });
     return;
   }
-  // eslint-disable-next-line no-console
   console.error('[error]', err);
   res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' } });
 }

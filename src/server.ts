@@ -45,7 +45,6 @@ async function main(): Promise<void> {
   await connectDb(e.MONGO_URI);
   const app = buildApp();
   app.listen(e.PORT, () => {
-    // eslint-disable-next-line no-console
     console.log(`shloka-backend listening on :${e.PORT}`);
   });
 }
