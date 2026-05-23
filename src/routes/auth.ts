@@ -80,7 +80,7 @@ authRouter.post('/login', async (req, res, next) => {
   }
 });
 
-authRouter.post('/logout', (req, res) => {
+authRouter.post('/logout', requireAuth, (req, res) => {
   clearSessionCookie(res, env().NODE_ENV === 'production');
   res.json({ ok: true });
 });

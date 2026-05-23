@@ -123,4 +123,9 @@ describe('auth routes', () => {
     const me = await request(app).get('/api/auth/me');
     expect(me.status).toBe(401);
   });
+
+  it('logout without cookie → 401', async () => {
+    const res = await request(app).post('/api/auth/logout');
+    expect(res.status).toBe(401);
+  });
 });
