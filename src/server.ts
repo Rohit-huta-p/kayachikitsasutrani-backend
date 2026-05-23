@@ -6,6 +6,7 @@ import cookieParser from 'cookie-parser';
 import { env } from './env';
 import { connectDb } from './db';
 import { healthRouter } from './routes/health';
+import { authRouter } from './routes/auth';
 import { errorHandler } from './middleware/errorHandler';
 
 export function buildApp(): express.Express {
@@ -29,6 +30,7 @@ export function buildApp(): express.Express {
   );
 
   app.use('/api/health', healthRouter);
+  app.use('/api/auth', authRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
