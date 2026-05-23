@@ -146,3 +146,58 @@ adminShlokasRouter.post('/', async (req, res, next) => {
     next(err);
   }
 });
+
+const patchBodySchema = baseBodySchema.partial();
+
+adminShlokasRouter.patch('/:id', async (req, res, next) => {
+  try {
+    if (!Types.ObjectId.isValid(req.params.id)) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Shloka not found' } });
+      return;
+    }
+    const body = patchBodySchema.parse(req.body);
+    const doc = await Shloka.findById(req.params.id);
+    if (!doc) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Shloka not found' } });
+      return;
+    }
+
+    // If audio or lines are being changed, validate timings against the merged result
+    const merged = {
+      slug: body.slug ?? doc.slug,
+      title: body.title ?? doc.title,
+      meaning: body.meaning ?? doc.meaning,
+      translation: body.translation ?? doc.translation,
+      status: body.status ?? (doc.status as 'draft' | 'published'),
+      audio: body.audio ?? doc.audio,
+      image: body.image ?? doc.image,
+      lines: body.lines ?? doc.lines,
+    } as z.infer<typeof baseBodySchema>;
+
+    const timingsError = validateTimings(merged);
+    if (timingsError) {
+      res.status(400).json({ error: { code: 'INVALID_TIMINGS', message: timingsError } });
+      return;
+    }
+
+    if (body.slug && body.slug !== doc.slug) {
+      const collide = await Shloka.findOne({ slug: body.slug, _id: { $ne: doc._id } });
+      if (collide) {
+        res.status(409).json({ error: { code: 'SLUG_TAKEN', message: 'Slug already used' } });
+        return;
+      }
+      doc.slug = body.slug;
+    }
+    if (body.title !== undefined) doc.title = body.title;
+    if (body.meaning !== undefined) doc.meaning = body.meaning;
+    if (body.translation !== undefined) doc.translation = body.translation;
+    if (body.status !== undefined) doc.status = body.status;
+    if (body.audio !== undefined) doc.audio = body.audio;
+    if (body.image !== undefined) doc.image = body.image;
+    if (body.lines !== undefined) doc.lines = body.lines;
+    await doc.save();
+    res.json(toPublicShloka(doc, { includePublicIds: true }));
+  } catch (err) {
+    next(err);
+  }
+});

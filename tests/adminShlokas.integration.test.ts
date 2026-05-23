@@ -202,3 +202,69 @@ describe('GET /api/admin/shlokas/:id', () => {
     expect(res.status).toBe(404);
   });
 });
+
+describe('PATCH /api/admin/shlokas/:id', () => {
+  it('updates title + status', async () => {
+    const created = await request(app).post('/api/admin/shlokas').set('Cookie', adminCookie).send(VALID_BODY);
+    const res = await request(app)
+      .patch(`/api/admin/shlokas/${created.body.id}`)
+      .set('Cookie', adminCookie)
+      .send({ title: 'New Title', status: 'published' });
+    expect(res.status).toBe(200);
+    expect(res.body.title).toBe('New Title');
+    expect(res.body.status).toBe('published');
+  });
+
+  it('can change slug if not colliding', async () => {
+    const created = await request(app).post('/api/admin/shlokas').set('Cookie', adminCookie).send(VALID_BODY);
+    const res = await request(app)
+      .patch(`/api/admin/shlokas/${created.body.id}`)
+      .set('Cookie', adminCookie)
+      .send({ slug: 'renamed' });
+    expect(res.status).toBe(200);
+    expect(res.body.slug).toBe('renamed');
+  });
+
+  it('slug colliding with another shloka → 409', async () => {
+    const first = await request(app).post('/api/admin/shlokas').set('Cookie', adminCookie).send(VALID_BODY);
+    await request(app)
+      .post('/api/admin/shlokas')
+      .set('Cookie', adminCookie)
+      .send({ ...VALID_BODY, slug: 'second' });
+    const res = await request(app)
+      .patch(`/api/admin/shlokas/${first.body.id}`)
+      .set('Cookie', adminCookie)
+      .send({ slug: 'second' });
+    expect(res.status).toBe(409);
+  });
+
+  it('unknown id → 404', async () => {
+    const res = await request(app)
+      .patch('/api/admin/shlokas/507f1f77bcf86cd799439011')
+      .set('Cookie', adminCookie)
+      .send({ title: 'x' });
+    expect(res.status).toBe(404);
+  });
+
+  it('invalid timings in updated line → 400', async () => {
+    const created = await request(app).post('/api/admin/shlokas').set('Cookie', adminCookie).send(VALID_BODY);
+    const res = await request(app)
+      .patch(`/api/admin/shlokas/${created.body.id}`)
+      .set('Cookie', adminCookie)
+      .send({
+        lines: [
+          {
+            sanskrit: 'x',
+            transliteration: '',
+            words: [
+              { text: 'a', start: 1, end: 0 },
+            ],
+            fullTimings: [{ text: 'a', start: 1, end: 0 }],
+          },
+        ],
+        audio: { ...VALID_BODY.audio, lines: [VALID_BODY.audio.lines[0]] },
+      });
+    expect(res.status).toBe(400);
+    expect(res.body.error.code).toBe('INVALID_TIMINGS');
+  });
+});
