@@ -193,9 +193,11 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
     if (body.meaning !== undefined) doc.meaning = body.meaning;
     if (body.translation !== undefined) doc.translation = body.translation;
     if (body.status !== undefined) doc.status = body.status;
-    if (body.audio !== undefined) doc.audio = body.audio;
-    if (body.image !== undefined) doc.image = body.image;
-    if (body.lines !== undefined) doc.lines = body.lines;
+    // Mongoose accepts plain objects for DocumentArray sub-schemas at runtime,
+    // but the static types require DocumentArray. Cast to bypass — runtime is safe.
+    if (body.audio !== undefined) doc.audio = body.audio as typeof doc.audio;
+    if (body.image !== undefined) doc.image = body.image as typeof doc.image;
+    if (body.lines !== undefined) doc.lines = body.lines as typeof doc.lines;
     await doc.save();
     res.json(toPublicShloka(doc, { includePublicIds: true }));
   } catch (err) {
