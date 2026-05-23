@@ -7,6 +7,7 @@ import { env } from './env.js';
 import { connectDb } from './db.js';
 import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
+import { adminUploadsRouter } from './routes/admin/uploads.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export function buildApp(): express.Express {
@@ -31,6 +32,7 @@ export function buildApp(): express.Express {
 
   app.use('/api/health', healthRouter);
   app.use('/api/auth', authRouter);
+  app.use('/api/admin/uploads', adminUploadsRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });
