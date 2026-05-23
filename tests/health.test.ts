@@ -13,6 +13,9 @@ beforeAll(() => {
   process.env.ADMIN_EMAIL = 'admin@example.com';
   process.env.ADMIN_PASSWORD = 'strongpw1';
   process.env.ADMIN_NAME = 'Admin';
+  process.env.CLOUDINARY_CLOUD_NAME = 'demo';
+  process.env.CLOUDINARY_API_KEY = '123';
+  process.env.CLOUDINARY_API_SECRET = 'sssss';
   app = buildApp();
 });
 
