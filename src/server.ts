@@ -9,6 +9,7 @@ import { healthRouter } from './routes/health.js';
 import { authRouter } from './routes/auth.js';
 import { adminUploadsRouter } from './routes/admin/uploads.js';
 import { adminShlokasRouter } from './routes/admin/shlokas.js';
+import { adminStudentsRouter } from './routes/admin/students.js';
 import { shlokasRouter } from './routes/shlokas.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
@@ -36,6 +37,7 @@ export function buildApp(): express.Express {
   app.use('/api/auth', authRouter);
   app.use('/api/admin/uploads', adminUploadsRouter);
   app.use('/api/admin/shlokas', adminShlokasRouter);
+  app.use('/api/admin/students', adminStudentsRouter);
   app.use('/api/shlokas', shlokasRouter);
 
   app.use((_req, res) => {
