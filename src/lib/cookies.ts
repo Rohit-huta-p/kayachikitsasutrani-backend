@@ -7,7 +7,10 @@ export function setSessionCookie(res: Response, token: string, isProd: boolean):
   res.cookie(SESSION_COOKIE_NAME, token, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    // Cross-site cookies (frontend on a different .onrender.com subdomain than
+    // backend) require SameSite=none + Secure. In dev (no HTTPS), Secure is
+    // false → fall back to 'lax' so local cookies still work.
+    sameSite: isProd ? 'none' : 'lax',
     maxAge: SEVEN_DAYS_MS,
     path: '/',
   });
@@ -17,7 +20,10 @@ export function clearSessionCookie(res: Response, isProd: boolean): void {
   res.clearCookie(SESSION_COOKIE_NAME, {
     httpOnly: true,
     secure: isProd,
-    sameSite: 'lax',
+    // Cross-site cookies (frontend on a different .onrender.com subdomain than
+    // backend) require SameSite=none + Secure. In dev (no HTTPS), Secure is
+    // false → fall back to 'lax' so local cookies still work.
+    sameSite: isProd ? 'none' : 'lax',
     path: '/',
   });
 }
