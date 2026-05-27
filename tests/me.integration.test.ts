@@ -116,7 +116,7 @@ describe('GET /api/me/completions', () => {
     expect(res.status).toBe(401);
   });
 
-  it('excludes completions on drafts when called as student', async () => {
+  it('still returns completion when shloka was later moved to draft', async () => {
     const sh = await seedShloka('s1');
     const me = await seedStudent('me@x.test', 'Me');
     await ShlokaCompletion.create({ userId: me._id, shlokaId: sh._id, completedAt: new Date(), attempts: 1, elapsedSeconds: 30 });

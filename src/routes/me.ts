@@ -36,11 +36,11 @@ meRouter.get('/completions', async (req, res, next) => {
     const shlokas = await Shloka.find({ _id: { $in: shlokaIds } }).lean();
     const shlokaMap = new Map(shlokas.map((s) => [s._id.toString(), s]));
 
-    type Completion = { _id: unknown; userId: unknown; completedAt: Date; attempts: number; elapsedSeconds: number };
-    const allCompletionsByShloka = new Map<string, Completion[]>();
+    type LeanCompletion = typeof myCompletions[number];
+    const allCompletionsByShloka = new Map<string, LeanCompletion[]>();
     for (const sid of shlokaIds) {
       const all = await ShlokaCompletion.find({ shlokaId: sid }).lean();
-      allCompletionsByShloka.set(sid.toString(), all as unknown as Completion[]);
+      allCompletionsByShloka.set(sid.toString(), all);
     }
 
     const items = myCompletions.map((c) => {
@@ -56,7 +56,7 @@ meRouter.get('/completions', async (req, res, next) => {
         if (aAvg !== bAvg) return aAvg - bAvg;
         return (a.completedAt as Date).getTime() - (b.completedAt as Date).getTime();
       });
-      const myIdx = sortedByAvg.findIndex((x) => (x.userId as { toString(): string }).toString() === userId);
+      const myIdx = sortedByAvg.findIndex((x) => x.userId.toString() === userId);
       return {
         shlokaId: sid,
         slug: shloka?.slug ?? '',
