@@ -16,7 +16,7 @@ const signupSchema = z.object({
   name: z.string().min(1).max(100),
   age: z.number().int().min(1).max(150).optional(),
   gender: z.enum(['male', 'female', 'other']).optional(),
-  universityName: z.string().max(200).optional(),
+  collegeName: z.string().max(200).optional(),
   course: z.string().max(200).optional(),
 });
 
@@ -41,7 +41,7 @@ authRouter.post('/signup', async (req, res, next) => {
       name: body.name,
       age: body.age,
       gender: body.gender,
-      universityName: body.universityName,
+      collegeName: body.collegeName,
       course: body.course,
     });
     const e = env();

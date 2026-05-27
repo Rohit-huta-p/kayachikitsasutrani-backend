@@ -8,7 +8,7 @@ const userSchema = new Schema(
     name: { type: String, required: true, trim: true, minlength: 1, maxlength: 100 },
     age: { type: Number, min: 1, max: 150 },
     gender: { type: String, enum: ['male', 'female', 'other'] },
-    universityName: { type: String, trim: true, maxlength: 200 },
+    collegeName: { type: String, trim: true, maxlength: 200 },
     course: { type: String, trim: true, maxlength: 200 },
     lastLoginAt: { type: Date },
   },

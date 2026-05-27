@@ -7,7 +7,7 @@ export interface PublicUser {
   name: string;
   age?: number;
   gender?: 'male' | 'female' | 'other';
-  universityName?: string;
+  collegeName?: string;
   course?: string;
   createdAt: string;
 }
@@ -20,7 +20,7 @@ export function toPublicUser(doc: UserDoc): PublicUser {
     name: doc.name,
     age: doc.age ?? undefined,
     gender: (doc.gender as 'male' | 'female' | 'other' | undefined) ?? undefined,
-    universityName: doc.universityName ?? undefined,
+    collegeName: doc.collegeName ?? undefined,
     course: doc.course ?? undefined,
     createdAt: (doc.createdAt as Date).toISOString(),
   };

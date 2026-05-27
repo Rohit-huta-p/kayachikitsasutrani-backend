@@ -47,7 +47,7 @@ const VALID_SIGNUP = {
   name: 'A Student',
   age: 22,
   gender: 'male',
-  universityName: 'Test U',
+  collegeName: 'Test U',
   course: 'BAMS',
 };
 

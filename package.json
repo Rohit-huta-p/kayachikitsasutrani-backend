@@ -13,7 +13,8 @@
     "test": "vitest run",
     "test:watch": "vitest",
     "lint": "eslint .",
-    "seed:admin": "tsx src/scripts/seedAdmin.ts"
+    "seed:admin": "tsx src/scripts/seedAdmin.ts",
+    "backfill:course": "tsx src/scripts/backfillCourseCollege.ts"
   },
   "dependencies": {
     "bcrypt": "^5.1.1",
