@@ -26,7 +26,6 @@ const assetSchema = z.object({
 
 const lineSchema = z.object({
   sanskrit: z.string().min(1).max(1000),
-  transliteration: z.string().max(1000).default(''),
   words: z.array(wordTimingSchema),
   fullTimings: z.array(wordTimingSchema),
 });

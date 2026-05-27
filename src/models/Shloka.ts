@@ -12,7 +12,6 @@ const wordTimingSchema = new Schema(
 const lineSchema = new Schema(
   {
     sanskrit: { type: String, required: true, trim: true, minlength: 1, maxlength: 1000 },
-    transliteration: { type: String, default: '', trim: true, maxlength: 1000 },
     words: { type: [wordTimingSchema], default: [] },
     fullTimings: { type: [wordTimingSchema], default: [] },
   },

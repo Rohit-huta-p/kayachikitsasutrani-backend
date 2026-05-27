@@ -8,7 +8,6 @@ export interface PublicWordTiming {
 
 export interface PublicShlokaLine {
   sanskrit: string;
-  transliteration: string;
   words: PublicWordTiming[];
   fullTimings: PublicWordTiming[];
 }
@@ -58,7 +57,6 @@ export function toPublicShloka(doc: ShlokaDoc, opts: ToPublicOpts = {}): PublicS
     image: doc.image ? mapAsset(doc.image) : undefined,
     lines: doc.lines.map((l) => ({
       sanskrit: l.sanskrit,
-      transliteration: l.transliteration ?? '',
       words: l.words.map((w) => ({ text: w.text, start: w.start, end: w.end })),
       fullTimings: l.fullTimings.map((w) => ({ text: w.text, start: w.start, end: w.end })),
     })),

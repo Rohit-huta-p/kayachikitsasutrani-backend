@@ -72,7 +72,6 @@ const VALID_BODY = {
   lines: [
     {
       sanskrit: 'लङ्घनं स्वेदनं',
-      transliteration: 'laṅghanaṁ svēdanaṁ',
       words: [
         { text: 'लङ्घनं', start: 0, end: 0.9 },
         { text: 'स्वेदनं', start: 0.9, end: 1.8 },
@@ -256,7 +255,6 @@ describe('PATCH /api/admin/shlokas/:id', () => {
         lines: [
           {
             sanskrit: 'x',
-            transliteration: '',
             words: [
               { text: 'a', start: 1, end: 0 },
             ],
@@ -287,7 +285,6 @@ describe('DELETE /api/admin/shlokas/:id', () => {
         VALID_BODY.lines[0],
         {
           sanskrit: 'x',
-          transliteration: '',
           words: [{ text: 'x', start: 0, end: 1 }],
           fullTimings: [{ text: 'x', start: 0, end: 1 }],
         },

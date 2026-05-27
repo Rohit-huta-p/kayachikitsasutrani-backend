@@ -53,7 +53,6 @@ async function seedShloka(slug: string, status: 'draft' | 'published') {
     lines: [
       {
         sanskrit: 'a',
-        transliteration: 'a',
         words: [{ text: 'a', start: 0, end: 1 }],
         fullTimings: [{ text: 'a', start: 0, end: 1 }],
       },
