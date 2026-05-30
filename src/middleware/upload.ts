@@ -4,7 +4,14 @@ import type { Request, Response, NextFunction } from 'express';
 const AUDIO_MAX_BYTES = 20 * 1024 * 1024;
 const IMAGE_MAX_BYTES = 5 * 1024 * 1024;
 
-const AUDIO_MIMES = new Set(['audio/mpeg', 'audio/mp3', 'audio/wav']);
+const AUDIO_MIMES = new Set([
+  'audio/mpeg',
+  'audio/mp3',
+  'audio/wav',
+  'audio/mp4',     // .m4a (iOS Voice Memos, most browsers)
+  'audio/x-m4a',   // .m4a (some Windows browsers)
+  'audio/aac',     // .m4a (occasional)
+]);
 const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
 
 export const audioUpload = multer({
