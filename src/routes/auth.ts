@@ -69,8 +69,10 @@ authRouter.post('/login', async (req, res, next) => {
       invalid();
       return;
     }
-    user.lastLoginAt = new Date();
-    await user.save();
+    // Use updateOne instead of user.save() to bypass full-doc validation.
+    // Old user docs may have capitalized gender ("Male") from a prior signup
+    // form, which the current lowercase-enum schema would reject on save.
+    await User.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } });
     const e = env();
     const token = signSession(user._id.toString(), e.JWT_SECRET);
     setSessionCookie(res, token, e.NODE_ENV === 'production');
