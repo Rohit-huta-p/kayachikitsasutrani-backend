@@ -12,5 +12,13 @@ export function errorHandler(err: unknown, req: Request, res: Response, _next: N
     return;
   }
   console.error('[error]', err);
-  res.status(500).json({ error: { code: 'INTERNAL_ERROR', message: 'Something went wrong' } });
+  const message = err instanceof Error ? err.message : 'Something went wrong';
+  res.status(500).json({
+    error: {
+      code: 'INTERNAL_ERROR',
+      message,
+      // Stack only when explicitly enabled — set DEBUG_ERRORS=1 in env.
+      ...(process.env.DEBUG_ERRORS === '1' && err instanceof Error ? { stack: err.stack } : {}),
+    },
+  });
 }
