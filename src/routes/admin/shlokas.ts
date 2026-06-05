@@ -34,6 +34,7 @@ const baseBodySchema = z.object({
   slug: z.string().refine(isValidSlug, { message: 'Invalid slug (use lowercase kebab-case)' }),
   title: z.string().min(1).max(200),
   meaning: z.string().min(1).max(5000),
+  fullText: z.string().max(5000).optional(),
   caseStudy: z.string().max(5000).optional(),
   status: z.enum(['draft', 'published']).optional(),
   audio: z.object({
@@ -134,6 +135,7 @@ adminShlokasRouter.post('/', async (req, res, next) => {
       slug: body.slug,
       title: body.title,
       meaning: body.meaning,
+      fullText: body.fullText,
       caseStudy: body.caseStudy,
       status: body.status ?? 'draft',
       audio: body.audio,
@@ -167,6 +169,7 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
       slug: body.slug ?? doc.slug,
       title: body.title ?? doc.title,
       meaning: body.meaning ?? doc.meaning,
+      fullText: body.fullText ?? doc.fullText,
       caseStudy: body.caseStudy ?? doc.caseStudy,
       status: body.status ?? (doc.status as 'draft' | 'published'),
       audio: body.audio ?? doc.audio,
@@ -190,6 +193,7 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
     }
     if (body.title !== undefined) doc.title = body.title;
     if (body.meaning !== undefined) doc.meaning = body.meaning;
+    if (body.fullText !== undefined) doc.fullText = body.fullText;
     if (body.caseStudy !== undefined) doc.caseStudy = body.caseStudy;
     if (body.status !== undefined) doc.status = body.status;
     // Mongoose accepts plain objects for DocumentArray sub-schemas at runtime,

@@ -39,6 +39,7 @@ const shlokaSchema = new Schema(
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     title: { type: String, required: true, trim: true, minlength: 1, maxlength: 200 },
     meaning: { type: String, required: true, trim: true, minlength: 1, maxlength: 5000 },
+    fullText: { type: String, trim: true, maxlength: 5000 },
     caseStudy: { type: String, trim: true, maxlength: 5000 },
     status: { type: String, enum: ['draft', 'published'], required: true, default: 'draft', index: true },
     audio: { type: audioSchema, required: true },
