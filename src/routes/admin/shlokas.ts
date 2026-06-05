@@ -34,11 +34,12 @@ const baseBodySchema = z.object({
   slug: z.string().refine(isValidSlug, { message: 'Invalid slug (use lowercase kebab-case)' }),
   title: z.string().min(1).max(200),
   meaning: z.string().min(1).max(5000),
-  translation: z.string().min(1).max(5000),
+  caseStudy: z.string().max(5000).optional(),
   status: z.enum(['draft', 'published']).optional(),
   audio: z.object({
     full: assetSchema,
     lines: z.array(assetSchema),
+    meaning: assetSchema.optional(),
   }),
   image: assetSchema.optional(),
   lines: z.array(lineSchema),
@@ -134,7 +135,7 @@ adminShlokasRouter.post('/', async (req, res, next) => {
       slug: body.slug,
       title: body.title,
       meaning: body.meaning,
-      translation: body.translation,
+      caseStudy: body.caseStudy,
       status: body.status ?? 'draft',
       audio: body.audio,
       image: body.image,
@@ -167,7 +168,7 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
       slug: body.slug ?? doc.slug,
       title: body.title ?? doc.title,
       meaning: body.meaning ?? doc.meaning,
-      translation: body.translation ?? doc.translation,
+      caseStudy: body.caseStudy ?? doc.caseStudy,
       status: body.status ?? (doc.status as 'draft' | 'published'),
       audio: body.audio ?? doc.audio,
       image: body.image ?? doc.image,
@@ -190,7 +191,7 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
     }
     if (body.title !== undefined) doc.title = body.title;
     if (body.meaning !== undefined) doc.meaning = body.meaning;
-    if (body.translation !== undefined) doc.translation = body.translation;
+    if (body.caseStudy !== undefined) doc.caseStudy = body.caseStudy;
     if (body.status !== undefined) doc.status = body.status;
     // Mongoose accepts plain objects for DocumentArray sub-schemas at runtime,
     // but the static types require DocumentArray. Cast to bypass — runtime is safe.

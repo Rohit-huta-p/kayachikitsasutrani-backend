@@ -62,7 +62,6 @@ const VALID_BODY = {
   slug: 'taruna-jwara',
   title: 'Taruna Jwara',
   meaning: 'Treatment for the early stage of fever',
-  translation: 'In the early stage of jwara, ...',
   audio: {
     full: { url: 'https://res.cloudinary.com/x/full.mp3', publicId: 'shlokas/audio/full' },
     lines: [

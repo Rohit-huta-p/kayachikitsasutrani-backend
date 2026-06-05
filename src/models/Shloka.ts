@@ -30,6 +30,7 @@ const audioSchema = new Schema(
   {
     full: { type: assetSchema, required: true },
     lines: { type: [assetSchema], default: [] },
+    meaning: { type: assetSchema },
   },
   { _id: false },
 );
@@ -39,7 +40,7 @@ const shlokaSchema = new Schema(
     slug: { type: String, required: true, unique: true, lowercase: true, trim: true, index: true },
     title: { type: String, required: true, trim: true, minlength: 1, maxlength: 200 },
     meaning: { type: String, required: true, trim: true, minlength: 1, maxlength: 5000 },
-    translation: { type: String, required: true, trim: true, minlength: 1, maxlength: 5000 },
+    caseStudy: { type: String, trim: true, maxlength: 5000 },
     status: { type: String, enum: ['draft', 'published'], required: true, default: 'draft', index: true },
     audio: { type: audioSchema, required: true },
     image: { type: assetSchema },

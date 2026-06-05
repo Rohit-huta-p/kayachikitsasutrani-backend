@@ -48,7 +48,6 @@ async function seedShloka(slug: string) {
     slug,
     title: `Title ${slug}`,
     meaning: 'm',
-    translation: 't',
     status: 'published',
     audio: { full: { url: 'u', publicId: 'p' }, lines: [{ url: 'u', publicId: 'p1' }] },
     lines: [{

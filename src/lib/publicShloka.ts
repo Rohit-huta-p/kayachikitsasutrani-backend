@@ -22,11 +22,12 @@ export interface PublicShloka {
   slug: string;
   title: string;
   meaning: string;
-  translation: string;
+  caseStudy?: string;
   status: 'draft' | 'published';
   audio: {
     full: PublicShlokaAsset;
     lines: PublicShlokaAsset[];
+    meaning?: PublicShlokaAsset;
   };
   image?: PublicShlokaAsset;
   lines: PublicShlokaLine[];
@@ -48,11 +49,12 @@ export function toPublicShloka(doc: ShlokaDoc, opts: ToPublicOpts = {}): PublicS
     slug: doc.slug,
     title: doc.title,
     meaning: doc.meaning,
-    translation: doc.translation,
+    caseStudy: doc.caseStudy ?? undefined,
     status: doc.status as 'draft' | 'published',
     audio: {
       full: mapAsset(doc.audio.full),
       lines: doc.audio.lines.map(mapAsset),
+      meaning: doc.audio.meaning ? mapAsset(doc.audio.meaning) : undefined,
     },
     image: doc.image ? mapAsset(doc.image) : undefined,
     lines: doc.lines.map((l) => ({
