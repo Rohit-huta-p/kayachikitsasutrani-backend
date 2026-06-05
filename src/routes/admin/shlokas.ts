@@ -39,7 +39,6 @@ const baseBodySchema = z.object({
   audio: z.object({
     full: assetSchema,
     lines: z.array(assetSchema),
-    meaning: assetSchema.optional(),
   }),
   image: assetSchema.optional(),
   lines: z.array(lineSchema),

@@ -30,7 +30,6 @@ const audioSchema = new Schema(
   {
     full: { type: assetSchema, required: true },
     lines: { type: [assetSchema], default: [] },
-    meaning: { type: assetSchema },
   },
   { _id: false },
 );

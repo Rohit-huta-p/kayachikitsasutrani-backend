@@ -27,7 +27,6 @@ export interface PublicShloka {
   audio: {
     full: PublicShlokaAsset;
     lines: PublicShlokaAsset[];
-    meaning?: PublicShlokaAsset;
   };
   image?: PublicShlokaAsset;
   lines: PublicShlokaLine[];
@@ -54,7 +53,6 @@ export function toPublicShloka(doc: ShlokaDoc, opts: ToPublicOpts = {}): PublicS
     audio: {
       full: mapAsset(doc.audio.full),
       lines: doc.audio.lines.map(mapAsset),
-      meaning: doc.audio.meaning ? mapAsset(doc.audio.meaning) : undefined,
     },
     image: doc.image ? mapAsset(doc.image) : undefined,
     lines: doc.lines.map((l) => ({
