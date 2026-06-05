@@ -160,6 +160,74 @@ describe('POST /api/admin/shlokas', () => {
     expect(res.status).toBe(400);
     expect(res.body.error.code).toBe('INVALID_TIMINGS');
   });
+
+  it('accepts single-audio shape (no audio.lines, no lines[].words)', async () => {
+    const body = {
+      slug: 'single-audio-test',
+      title: 'Single Audio Test',
+      meaning: 'A test shloka using only the full audio.',
+      fullText: 'om gam ganapataye namah',
+      status: 'draft' as const,
+      audio: {
+        full: { url: 'https://res.cloudinary.com/x/a.mp3', publicId: 'a' },
+        // no `lines` — optional now
+      },
+      lines: [
+        {
+          sanskrit: 'om gam ganapataye namah',
+          // no `words` — optional now
+          fullTimings: [
+            { text: 'om', start: 0, end: 0.5 },
+            { text: 'gam', start: 0.5, end: 1.0 },
+            { text: 'ganapataye', start: 1.0, end: 2.0 },
+            { text: 'namah', start: 2.0, end: 2.5 },
+          ],
+        },
+      ],
+    };
+    const res = await request(app).post('/api/admin/shlokas').set('Cookie', adminCookie).send(body);
+    expect(res.status).toBe(200);
+    expect(res.body.slug).toBe('single-audio-test');
+    expect(res.body.audio.lines).toEqual([]);
+    expect(res.body.lines[0].fullTimings).toHaveLength(4);
+    expect(res.body.lines[0].words).toEqual([]);
+  });
+});
+
+describe('GET /api/shlokas/:slug (single-audio shloka)', () => {
+  it('returns empty audio.lines and empty lines[].words for single-audio shlokas', async () => {
+    const u = await User.create({
+      email: 'sa-creator@x.test',
+      passwordHash: await hashPassword('password1'),
+      role: 'admin',
+      name: 'C',
+    });
+    await Shloka.create({
+      slug: 'single-audio-read',
+      title: 'Single Audio Read',
+      meaning: 'm',
+      fullText: 'a b',
+      status: 'published',
+      audio: { full: { url: 'https://res.cloudinary.com/x/u.mp3', publicId: 'p' } },
+      lines: [
+        {
+          sanskrit: 'a b',
+          fullTimings: [
+            { text: 'a', start: 0, end: 1 },
+            { text: 'b', start: 1, end: 2 },
+          ],
+        },
+      ],
+      createdBy: u._id,
+    });
+    const res = await request(app)
+      .get('/api/shlokas/single-audio-read')
+      .set('Cookie', studentCookie);
+    expect(res.status).toBe(200);
+    expect(res.body.audio.lines).toEqual([]);
+    expect(res.body.lines[0].words).toEqual([]);
+    expect(res.body.lines[0].fullTimings).toHaveLength(2);
+  });
 });
 
 describe('GET /api/admin/shlokas', () => {
