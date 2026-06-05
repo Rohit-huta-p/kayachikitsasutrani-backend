@@ -26,7 +26,7 @@ const assetSchema = z.object({
 
 const lineSchema = z.object({
   sanskrit: z.string().min(1).max(1000),
-  words: z.array(wordTimingSchema),
+  words: z.array(wordTimingSchema).optional().default([]),
   fullTimings: z.array(wordTimingSchema),
 });
 
@@ -39,24 +39,26 @@ const baseBodySchema = z.object({
   status: z.enum(['draft', 'published']).optional(),
   audio: z.object({
     full: assetSchema,
-    lines: z.array(assetSchema),
+    lines: z.array(assetSchema).optional().default([]),
   }),
   image: assetSchema.optional(),
   lines: z.array(lineSchema),
 });
 
 function validateTimings(body: z.infer<typeof baseBodySchema>): string | null {
-  if (body.audio.lines.length !== body.lines.length) {
+  if (body.audio.lines.length > 0 && body.audio.lines.length !== body.lines.length) {
     return 'audio.lines.length must equal lines.length';
   }
   for (let i = 0; i < body.lines.length; i++) {
     const line = body.lines[i];
-    if (line.words.length !== line.fullTimings.length) {
+    if (line.words.length > 0 && line.words.length !== line.fullTimings.length) {
       return `lines[${i}].words and fullTimings must have the same length`;
     }
-    for (let k = 0; k < line.words.length; k++) {
-      if (line.words[k].text !== line.fullTimings[k].text) {
-        return `lines[${i}].words[${k}].text must equal lines[${i}].fullTimings[${k}].text`;
+    if (line.words.length > 0) {
+      for (let k = 0; k < line.words.length; k++) {
+        if (line.words[k].text !== line.fullTimings[k].text) {
+          return `lines[${i}].words[${k}].text must equal lines[${i}].fullTimings[${k}].text`;
+        }
       }
     }
     for (const arr of [line.words, line.fullTimings]) {

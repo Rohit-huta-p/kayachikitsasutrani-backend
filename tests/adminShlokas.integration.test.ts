@@ -116,7 +116,13 @@ describe('POST /api/admin/shlokas', () => {
   it('audio.lines.length mismatch with lines.length → 400 INVALID_TIMINGS', async () => {
     const body = {
       ...VALID_BODY,
-      audio: { ...VALID_BODY.audio, lines: [] },
+      audio: {
+        ...VALID_BODY.audio,
+        lines: [
+          { url: 'https://res.cloudinary.com/x/line-1.mp3', publicId: 'shlokas/audio/l1' },
+          { url: 'https://res.cloudinary.com/x/line-2.mp3', publicId: 'shlokas/audio/l2' },
+        ],
+      },
     };
     const res = await request(app).post('/api/admin/shlokas').set('Cookie', adminCookie).send(body);
     expect(res.status).toBe(400);

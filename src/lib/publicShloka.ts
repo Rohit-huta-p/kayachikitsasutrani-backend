@@ -54,7 +54,7 @@ export function toPublicShloka(doc: ShlokaDoc, opts: ToPublicOpts = {}): PublicS
     status: doc.status as 'draft' | 'published',
     audio: {
       full: mapAsset(doc.audio.full),
-      lines: doc.audio.lines.map(mapAsset),
+      lines: (doc.audio.lines ?? []).map(mapAsset),
     },
     image: doc.image ? mapAsset(doc.image) : undefined,
     lines: doc.lines.map((l) => ({
