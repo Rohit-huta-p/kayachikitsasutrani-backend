@@ -40,6 +40,7 @@ const shlokaSchema = new Schema(
     title: { type: String, required: true, trim: true, minlength: 1, maxlength: 200 },
     meaning: { type: String, required: true, trim: true, minlength: 1, maxlength: 5000 },
     fullText: { type: String, trim: true, maxlength: 5000 },
+    highlightWords: { type: [String], default: [] },
     caseStudy: { type: String, trim: true, maxlength: 5000 },
     status: { type: String, enum: ['draft', 'published'], required: true, default: 'draft', index: true },
     audio: { type: audioSchema, required: true },

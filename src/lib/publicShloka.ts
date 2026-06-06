@@ -23,6 +23,7 @@ export interface PublicShloka {
   title: string;
   meaning: string;
   fullText?: string;
+  highlightWords?: string[];
   caseStudy?: string;
   status: 'draft' | 'published';
   audio: {
@@ -50,6 +51,7 @@ export function toPublicShloka(doc: ShlokaDoc, opts: ToPublicOpts = {}): PublicS
     title: doc.title,
     meaning: doc.meaning,
     fullText: doc.fullText ?? undefined,
+    highlightWords: doc.highlightWords ?? [],
     caseStudy: doc.caseStudy ?? undefined,
     status: doc.status as 'draft' | 'published',
     audio: {
