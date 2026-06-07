@@ -12,7 +12,7 @@ const AUDIO_MIMES = new Set([
   'audio/x-m4a',   // .m4a (some Windows browsers)
   'audio/aac',     // .m4a (occasional)
 ]);
-const IMAGE_MIMES = new Set(['image/jpeg', 'image/png', 'image/webp']);
+const IMAGE_MIMES = new Set(['image/jpeg']);
 
 export const audioUpload = multer({
   storage: multer.memoryStorage(),
