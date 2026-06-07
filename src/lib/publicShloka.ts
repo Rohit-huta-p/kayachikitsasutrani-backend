@@ -25,6 +25,7 @@ export interface PublicShloka {
   fullText?: string;
   highlightWords?: string[];
   caseStudy?: string;
+  reference?: string;
   status: 'draft' | 'published';
   audio: {
     full: PublicShlokaAsset;
@@ -53,6 +54,7 @@ export function toPublicShloka(doc: ShlokaDoc, opts: ToPublicOpts = {}): PublicS
     fullText: doc.fullText ?? undefined,
     highlightWords: doc.highlightWords ?? [],
     caseStudy: doc.caseStudy ?? undefined,
+    reference: doc.reference ?? undefined,
     status: doc.status as 'draft' | 'published',
     audio: {
       full: mapAsset(doc.audio.full),

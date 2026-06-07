@@ -37,6 +37,7 @@ const baseBodySchema = z.object({
   fullText: z.string().max(5000).optional(),
   highlightWords: z.array(z.string().min(1).max(200)).optional().default([]),
   caseStudy: z.string().max(5000).optional(),
+  reference: z.string().max(500).optional(),
   status: z.enum(['draft', 'published']).optional(),
   audio: z.object({
     full: assetSchema,
@@ -141,6 +142,7 @@ adminShlokasRouter.post('/', async (req, res, next) => {
       fullText: body.fullText,
       highlightWords: body.highlightWords,
       caseStudy: body.caseStudy,
+      reference: body.reference,
       status: body.status ?? 'draft',
       audio: body.audio,
       image: body.image,
@@ -176,6 +178,7 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
       fullText: body.fullText ?? doc.fullText,
       highlightWords: body.highlightWords ?? doc.highlightWords,
       caseStudy: body.caseStudy ?? doc.caseStudy,
+      reference: body.reference ?? doc.reference,
       status: body.status ?? (doc.status as 'draft' | 'published'),
       audio: body.audio ?? doc.audio,
       image: body.image ?? doc.image,
@@ -201,6 +204,7 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
     if (body.fullText !== undefined) doc.fullText = body.fullText;
     if (body.highlightWords !== undefined) doc.highlightWords = body.highlightWords;
     if (body.caseStudy !== undefined) doc.caseStudy = body.caseStudy;
+    if (body.reference !== undefined) doc.reference = body.reference;
     if (body.status !== undefined) doc.status = body.status;
     // Mongoose accepts plain objects for DocumentArray sub-schemas at runtime,
     // but the static types require DocumentArray. Cast to bypass — runtime is safe.
