@@ -26,6 +26,7 @@ export interface PublicShloka {
   highlightWords?: string[];
   caseStudy?: string;
   reference?: string;
+  images: PublicShlokaAsset[];
   status: 'draft' | 'published';
   audio: {
     full: PublicShlokaAsset;
@@ -61,6 +62,14 @@ export function toPublicShloka(doc: ShlokaDoc, opts: ToPublicOpts = {}): PublicS
       lines: (doc.audio.lines ?? []).map(mapAsset),
     },
     image: doc.image ? mapAsset(doc.image) : undefined,
+    // Always return an array. Prefer the new `images` array; fall back to
+    // the legacy single `image` for shlokas that pre-date the carousel.
+    images:
+      (doc.images?.length ?? 0) > 0
+        ? (doc.images ?? []).map(mapAsset)
+        : doc.image
+          ? [mapAsset(doc.image)]
+          : [],
     lines: doc.lines.map((l) => ({
       sanskrit: l.sanskrit,
       words: l.words.map((w) => ({ text: w.text, start: w.start, end: w.end })),
