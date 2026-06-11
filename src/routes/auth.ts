@@ -1,10 +1,11 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { User } from '../models/User.js';
-import { hashPassword, comparePassword } from '../lib/password.js';
+import { hashPassword, comparePassword, generateRandomPassword } from '../lib/password.js';
 import { signSession } from '../lib/jwt.js';
 import { setSessionCookie, clearSessionCookie } from '../lib/cookies.js';
 import { toPublicUser } from '../lib/publicUser.js';
+import { sendMail, isMailConfigured } from '../lib/mailer.js';
 import { env } from '../env.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 
@@ -24,6 +25,26 @@ const loginSchema = z.object({
   email: z.string().email().toLowerCase(),
   password: z.string().min(1).max(200),
 });
+
+// Public access-request schema — note it has NO password field. The
+// password is generated server-side and emailed to the admin reviewer.
+const requestSignupSchema = z.object({
+  email: z.string().email().toLowerCase(),
+  name: z.string().min(1).max(100),
+  age: z.number().int().min(1).max(150).optional(),
+  gender: z.enum(['male', 'female', 'other']).optional(),
+  collegeName: z.string().max(200).optional(),
+  course: z.string().max(200).optional(),
+});
+
+function escapeHtml(s: string): string {
+  return s
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;')
+    .replace(/"/g, '&quot;')
+    .replace(/'/g, '&#39;');
+}
 
 authRouter.post('/signup', async (req, res, next) => {
   try {
@@ -48,6 +69,144 @@ authRouter.post('/signup', async (req, res, next) => {
     const token = signSession(user._id.toString(), e.JWT_SECRET);
     setSessionCookie(res, token, e.NODE_ENV === 'production');
     res.json({ user: toPublicUser(user) });
+  } catch (err) {
+    next(err);
+  }
+});
+
+/**
+ * Public access-request endpoint. The caller submits their profile (no
+ * password) and the server:
+ *   1. Generates a strong random password.
+ *   2. Creates a student account hashed with that password.
+ *   3. Emails the admin reviewer (SIGNUP_NOTIFY_EMAIL) the user's profile
+ *      plus the generated password in plaintext, so the reviewer can vet
+ *      the request and forward the credentials to the requester out of
+ *      band if they decide to approve.
+ *
+ * The plaintext password is never written to the response, never logged,
+ * and never returned to the requester — only the admin sees it.
+ *
+ * Admin role is never granted from this endpoint; the role is forced to
+ * 'student' regardless of input.
+ */
+authRouter.post('/request-signup', async (req, res, next) => {
+  try {
+    const body = requestSignupSchema.parse(req.body);
+    if (!isMailConfigured()) {
+      res.status(503).json({
+        error: {
+          code: 'MAIL_NOT_CONFIGURED',
+          message:
+            'Access requests are temporarily unavailable. Please contact the administrator.',
+        },
+      });
+      return;
+    }
+    const e = env();
+    const notifyTo = e.SIGNUP_NOTIFY_EMAIL;
+    if (!notifyTo) {
+      res.status(503).json({
+        error: {
+          code: 'MAIL_NOT_CONFIGURED',
+          message:
+            'Access requests are temporarily unavailable. Please contact the administrator.',
+        },
+      });
+      return;
+    }
+    const existing = await User.findOne({ email: body.email });
+    if (existing) {
+      res.status(409).json({ error: { code: 'EMAIL_TAKEN', message: 'Email already registered' } });
+      return;
+    }
+    const generatedPassword = generateRandomPassword(14);
+    const passwordHash = await hashPassword(generatedPassword);
+    const user = await User.create({
+      email: body.email,
+      passwordHash,
+      role: 'student',
+      name: body.name,
+      age: body.age,
+      gender: body.gender,
+      collegeName: body.collegeName,
+      course: body.course,
+    });
+
+    const subject = `Chikitsa Sutra · access request from ${body.name}`;
+    const lines = [
+      `A new user has requested access to Chikitsa Sutra.`,
+      ``,
+      `Name:     ${body.name}`,
+      `Email:    ${body.email}`,
+      body.age ? `Age:      ${body.age}` : null,
+      body.gender ? `Gender:   ${body.gender}` : null,
+      body.collegeName ? `College:  ${body.collegeName}` : null,
+      body.course ? `Course:   ${body.course}` : null,
+      ``,
+      `If you accept this request, share the password below with the user`,
+      `so they can sign in. Their account is already provisioned as a`,
+      `student (no admin access).`,
+      ``,
+      `Login email:    ${body.email}`,
+      `Login password: ${generatedPassword}`,
+      ``,
+      `User id:        ${user._id.toString()}`,
+      `Submitted at:   ${new Date().toISOString()}`,
+    ].filter((l): l is string => l !== null);
+
+    const html = `
+      <div style="font-family:Georgia,serif;color:#1B1208;max-width:560px;">
+        <h2 style="color:#A67C52;margin:0 0 12px;">Chikitsa Sutra · new access request</h2>
+        <p>A new user has requested access. Their account is already provisioned as a <strong>student</strong> (no admin access).</p>
+        <table style="border-collapse:collapse;margin:12px 0;">
+          <tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Name</td><td>${escapeHtml(body.name)}</td></tr>
+          <tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Email</td><td>${escapeHtml(body.email)}</td></tr>
+          ${body.age ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Age</td><td>${body.age}</td></tr>` : ''}
+          ${body.gender ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Gender</td><td>${escapeHtml(body.gender)}</td></tr>` : ''}
+          ${body.collegeName ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">College</td><td>${escapeHtml(body.collegeName)}</td></tr>` : ''}
+          ${body.course ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Course</td><td>${escapeHtml(body.course)}</td></tr>` : ''}
+        </table>
+        <p style="margin-top:16px;">If you accept this request, share the credentials below with the user:</p>
+        <div style="background:#FBF5E8;border:1.5px dashed #A67C52;border-radius:10px;padding:12px 16px;font-family:'Courier New',monospace;">
+          <div><strong>Login email:</strong> ${escapeHtml(body.email)}</div>
+          <div><strong>Login password:</strong> ${escapeHtml(generatedPassword)}</div>
+        </div>
+        <p style="margin-top:16px;color:#6B5436;font-size:12px;">
+          User id: ${user._id.toString()}<br/>
+          Submitted: ${new Date().toISOString()}
+        </p>
+      </div>`;
+
+    try {
+      await sendMail({
+        to: notifyTo,
+        subject,
+        text: lines.join('\n'),
+        html,
+        replyTo: body.email,
+      });
+    } catch (mailErr) {
+      // Roll back the user so a fresh request can be made once mail is
+      // working again.
+      await User.deleteOne({ _id: user._id });
+      // eslint-disable-next-line no-console
+      console.error('request-signup mail send failed', mailErr);
+      res.status(503).json({
+        error: {
+          code: 'MAIL_SEND_FAILED',
+          message:
+            'Could not deliver your request. Please try again later or contact the administrator.',
+        },
+      });
+      return;
+    }
+
+    res.json({
+      ok: true,
+      message:
+        'Request received. The administrator will email you your login credentials once your request is reviewed.',
+    });
   } catch (err) {
     next(err);
   }
