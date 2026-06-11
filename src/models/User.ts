@@ -11,6 +11,11 @@ const userSchema = new Schema(
     collegeName: { type: String, trim: true, maxlength: 200 },
     course: { type: String, trim: true, maxlength: 200 },
     lastLoginAt: { type: Date },
+    bookmarks: { type: [Schema.Types.ObjectId], ref: 'Shloka', default: [] },
+    // 'pending' = access request awaiting admin approval; passwordHash is
+    // a throwaway random value and the user cannot log in.
+    // 'active'  = approved, real password set by admin, user can log in.
+    status: { type: String, enum: ['pending', 'active'], default: 'active', index: true },
   },
   { timestamps: true },
 );

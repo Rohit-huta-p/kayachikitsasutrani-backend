@@ -93,39 +93,26 @@ authRouter.post('/signup', async (req, res, next) => {
 authRouter.post('/request-signup', async (req, res, next) => {
   try {
     const body = requestSignupSchema.parse(req.body);
-    if (!isMailConfigured()) {
-      res.status(503).json({
-        error: {
-          code: 'MAIL_NOT_CONFIGURED',
-          message:
-            'Access requests are temporarily unavailable. Please contact the administrator.',
-        },
-      });
-      return;
-    }
-    const e = env();
-    const notifyTo = e.SIGNUP_NOTIFY_EMAIL;
-    if (!notifyTo) {
-      res.status(503).json({
-        error: {
-          code: 'MAIL_NOT_CONFIGURED',
-          message:
-            'Access requests are temporarily unavailable. Please contact the administrator.',
-        },
-      });
-      return;
-    }
     const existing = await User.findOne({ email: body.email });
     if (existing) {
-      res.status(409).json({ error: { code: 'EMAIL_TAKEN', message: 'Email already registered' } });
+      const code = existing.status === 'pending' ? 'REQUEST_PENDING' : 'EMAIL_TAKEN';
+      const message =
+        existing.status === 'pending'
+          ? 'A request for this email is already awaiting review.'
+          : 'Email already registered.';
+      res.status(409).json({ error: { code, message } });
       return;
     }
-    const generatedPassword = generateRandomPassword(14);
-    const passwordHash = await hashPassword(generatedPassword);
+
+    // Pending users get a throwaway random hash — long enough that nobody
+    // can guess it, never returned anywhere, replaced when the admin
+    // approves the request.
+    const throwawayHash = await hashPassword(generateRandomPassword(48));
     const user = await User.create({
       email: body.email,
-      passwordHash,
+      passwordHash: throwawayHash,
       role: 'student',
+      status: 'pending',
       name: body.name,
       age: body.age,
       gender: body.gender,
@@ -133,79 +120,70 @@ authRouter.post('/request-signup', async (req, res, next) => {
       course: body.course,
     });
 
-    const subject = `Chikitsa Sutra · access request from ${body.name}`;
-    const lines = [
-      `A new user has requested access to Chikitsa Sutra.`,
-      ``,
-      `Name:     ${body.name}`,
-      `Email:    ${body.email}`,
-      body.age ? `Age:      ${body.age}` : null,
-      body.gender ? `Gender:   ${body.gender}` : null,
-      body.collegeName ? `College:  ${body.collegeName}` : null,
-      body.course ? `Course:   ${body.course}` : null,
-      ``,
-      `If you accept this request, share the password below with the user`,
-      `so they can sign in. Their account is already provisioned as a`,
-      `student (no admin access).`,
-      ``,
-      `Login email:    ${body.email}`,
-      `Login password: ${generatedPassword}`,
-      ``,
-      `User id:        ${user._id.toString()}`,
-      `Submitted at:   ${new Date().toISOString()}`,
-    ].filter((l): l is string => l !== null);
+    const e = env();
+    const notifyTo = e.SIGNUP_NOTIFY_EMAIL;
+    if (isMailConfigured() && notifyTo) {
+      const adminUrl = `${e.FRONTEND_ORIGINS[0] ?? ''}/admin/access-requests`;
+      const subject = `Chikitsa Sutra · access request from ${body.name}`;
+      const lines = [
+        `A new user has requested access to Chikitsa Sutra.`,
+        ``,
+        `Name:     ${body.name}`,
+        `Email:    ${body.email}`,
+        body.age ? `Age:      ${body.age}` : null,
+        body.gender ? `Gender:   ${body.gender}` : null,
+        body.collegeName ? `College:  ${body.collegeName}` : null,
+        body.course ? `Course:   ${body.course}` : null,
+        ``,
+        `Review and approve in the admin panel:`,
+        adminUrl,
+        ``,
+        `Submitted at: ${new Date().toISOString()}`,
+      ].filter((l): l is string => l !== null);
 
-    const html = `
-      <div style="font-family:Georgia,serif;color:#1B1208;max-width:560px;">
-        <h2 style="color:#A67C52;margin:0 0 12px;">Chikitsa Sutra · new access request</h2>
-        <p>A new user has requested access. Their account is already provisioned as a <strong>student</strong> (no admin access).</p>
-        <table style="border-collapse:collapse;margin:12px 0;">
-          <tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Name</td><td>${escapeHtml(body.name)}</td></tr>
-          <tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Email</td><td>${escapeHtml(body.email)}</td></tr>
-          ${body.age ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Age</td><td>${body.age}</td></tr>` : ''}
-          ${body.gender ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Gender</td><td>${escapeHtml(body.gender)}</td></tr>` : ''}
-          ${body.collegeName ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">College</td><td>${escapeHtml(body.collegeName)}</td></tr>` : ''}
-          ${body.course ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Course</td><td>${escapeHtml(body.course)}</td></tr>` : ''}
-        </table>
-        <p style="margin-top:16px;">If you accept this request, share the credentials below with the user:</p>
-        <div style="background:#FBF5E8;border:1.5px dashed #A67C52;border-radius:10px;padding:12px 16px;font-family:'Courier New',monospace;">
-          <div><strong>Login email:</strong> ${escapeHtml(body.email)}</div>
-          <div><strong>Login password:</strong> ${escapeHtml(generatedPassword)}</div>
-        </div>
-        <p style="margin-top:16px;color:#6B5436;font-size:12px;">
-          User id: ${user._id.toString()}<br/>
-          Submitted: ${new Date().toISOString()}
-        </p>
-      </div>`;
+      const html = `
+        <div style="font-family:Georgia,serif;color:#1B1208;max-width:560px;">
+          <h2 style="color:#A67C52;margin:0 0 12px;">Chikitsa Sutra · new access request</h2>
+          <p>A new user has requested access. Review their details and approve in the admin panel.</p>
+          <table style="border-collapse:collapse;margin:12px 0;">
+            <tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Name</td><td>${escapeHtml(body.name)}</td></tr>
+            <tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Email</td><td>${escapeHtml(body.email)}</td></tr>
+            ${body.age ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Age</td><td>${body.age}</td></tr>` : ''}
+            ${body.gender ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Gender</td><td>${escapeHtml(body.gender)}</td></tr>` : ''}
+            ${body.collegeName ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">College</td><td>${escapeHtml(body.collegeName)}</td></tr>` : ''}
+            ${body.course ? `<tr><td style="padding:4px 12px 4px 0;color:#6B5436;">Course</td><td>${escapeHtml(body.course)}</td></tr>` : ''}
+          </table>
+          <p style="margin-top:16px;">
+            <a href="${escapeHtml(adminUrl)}" style="display:inline-block;background:#A67C52;color:#fff;text-decoration:none;padding:10px 18px;border-radius:999px;font-weight:bold;">
+              Review in admin panel
+            </a>
+          </p>
+          <p style="margin-top:16px;color:#6B5436;font-size:12px;">
+            Submitted: ${new Date().toISOString()}
+          </p>
+        </div>`;
 
-    try {
-      await sendMail({
-        to: notifyTo,
-        subject,
-        text: lines.join('\n'),
-        html,
-        replyTo: body.email,
-      });
-    } catch (mailErr) {
-      // Roll back the user so a fresh request can be made once mail is
-      // working again.
-      await User.deleteOne({ _id: user._id });
-      // eslint-disable-next-line no-console
-      console.error('request-signup mail send failed', mailErr);
-      res.status(503).json({
-        error: {
-          code: 'MAIL_SEND_FAILED',
-          message:
-            'Could not deliver your request. Please try again later or contact the administrator.',
-        },
-      });
-      return;
+      try {
+        await sendMail({
+          to: notifyTo,
+          subject,
+          text: lines.join('\n'),
+          html,
+          replyTo: body.email,
+        });
+      } catch (mailErr) {
+        // Mail failure should not block the request — the admin can still
+        // see the entry in /admin/access-requests. Just log it.
+        // eslint-disable-next-line no-console
+        console.error('request-signup notification mail failed', mailErr);
+      }
     }
 
     res.json({
       ok: true,
       message:
-        'Request received. The administrator will email you your login credentials once your request is reviewed.',
+        'Request received. The administrator will review it and email you your login credentials.',
+      requestId: user._id.toString(),
     });
   } catch (err) {
     next(err);
@@ -226,6 +204,16 @@ authRouter.post('/login', async (req, res, next) => {
     const ok = await comparePassword(body.password, user.passwordHash);
     if (!ok) {
       invalid();
+      return;
+    }
+    if (user.status === 'pending') {
+      res.status(403).json({
+        error: {
+          code: 'REQUEST_PENDING',
+          message:
+            'Your access request is still awaiting administrator approval.',
+        },
+      });
       return;
     }
     // Use updateOne instead of user.save() to bypass full-doc validation.

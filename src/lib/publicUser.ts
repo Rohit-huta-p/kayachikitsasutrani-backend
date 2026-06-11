@@ -9,6 +9,8 @@ export interface PublicUser {
   gender?: 'male' | 'female' | 'other';
   collegeName?: string;
   course?: string;
+  bookmarks: string[];
+  status: 'pending' | 'active';
   createdAt: string;
 }
 
@@ -22,6 +24,8 @@ export function toPublicUser(doc: UserDoc): PublicUser {
     gender: (doc.gender as 'male' | 'female' | 'other' | undefined) ?? undefined,
     collegeName: doc.collegeName ?? undefined,
     course: doc.course ?? undefined,
+    bookmarks: (doc.bookmarks ?? []).map((b: unknown) => String(b)),
+    status: (doc.status as 'pending' | 'active' | undefined) ?? 'active',
     createdAt: (doc.createdAt as Date).toISOString(),
   };
 }

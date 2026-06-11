@@ -10,6 +10,7 @@ import { authRouter } from './routes/auth.js';
 import { adminUploadsRouter } from './routes/admin/uploads.js';
 import { adminShlokasRouter } from './routes/admin/shlokas.js';
 import { adminStudentsRouter } from './routes/admin/students.js';
+import { adminAccessRequestsRouter } from './routes/admin/access-requests.js';
 import { shlokasRouter } from './routes/shlokas.js';
 import { completionsRouter } from './routes/completions.js';
 import { meRouter } from './routes/me.js';
@@ -40,6 +41,7 @@ export function buildApp(): express.Express {
   app.use('/api/admin/uploads', adminUploadsRouter);
   app.use('/api/admin/shlokas', adminShlokasRouter);
   app.use('/api/admin/students', adminStudentsRouter);
+  app.use('/api/admin/access-requests', adminAccessRequestsRouter);
   app.use('/api/shlokas', shlokasRouter);
   app.use('/api/shlokas', completionsRouter);
   app.use('/api/me', meRouter);
