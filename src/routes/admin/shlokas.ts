@@ -43,6 +43,7 @@ const baseBodySchema = z.object({
     full: assetSchema,
     lines: z.array(assetSchema).optional().default([]),
   }),
+  meaningAudio: assetSchema.nullish(),
   image: assetSchema.optional(),
   images: z.array(assetSchema).max(5).optional().default([]),
   lines: z.array(lineSchema),
@@ -146,6 +147,7 @@ adminShlokasRouter.post('/', async (req, res, next) => {
       reference: body.reference,
       status: body.status ?? 'draft',
       audio: body.audio,
+      meaningAudio: body.meaningAudio ?? undefined,
       image: body.image,
       images: body.images,
       lines: body.lines,
@@ -212,6 +214,10 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
     // Mongoose accepts plain objects for DocumentArray sub-schemas at runtime,
     // but the static types require DocumentArray. Cast to bypass — runtime is safe.
     if (body.audio !== undefined) doc.audio = body.audio as typeof doc.audio;
+    // null clears the meaning audio; an object replaces it.
+    if (body.meaningAudio !== undefined) {
+      doc.meaningAudio = (body.meaningAudio ?? undefined) as typeof doc.meaningAudio;
+    }
     if (body.image !== undefined) doc.image = body.image as typeof doc.image;
     if (body.images !== undefined) doc.images = body.images as typeof doc.images;
     if (body.lines !== undefined) doc.lines = body.lines as typeof doc.lines;
@@ -237,6 +243,7 @@ adminShlokasRouter.delete('/:id', async (req, res, next) => {
       { publicId: doc.audio.full.publicId, resourceType: 'video' },
       ...doc.audio.lines.map((l) => ({ publicId: l.publicId, resourceType: 'video' as const })),
     ];
+    if (doc.meaningAudio) assets.push({ publicId: doc.meaningAudio.publicId, resourceType: 'video' });
     if (doc.image) assets.push({ publicId: doc.image.publicId, resourceType: 'image' });
     (doc.images ?? []).forEach((img) => {
       assets.push({ publicId: img.publicId, resourceType: 'image' });
