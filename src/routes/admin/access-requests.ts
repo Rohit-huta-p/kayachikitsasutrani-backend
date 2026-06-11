@@ -45,7 +45,15 @@ function buildAcceptanceEmail(args: {
     `mailto:${args.email}` +
     `?subject=${encodeURIComponent(subject)}` +
     `&body=${encodeURIComponent(body)}`;
-  return { subject, body, mailto };
+  // Gmail web compose fallback — works in any browser without a registered
+  // mailto: protocol handler. Opens Gmail in a new tab with the to /
+  // subject / body fields pre-filled, ready to send.
+  const gmailUrl =
+    `https://mail.google.com/mail/?view=cm&fs=1` +
+    `&to=${encodeURIComponent(args.email)}` +
+    `&su=${encodeURIComponent(subject)}` +
+    `&body=${encodeURIComponent(body)}`;
+  return { subject, body, mailto, gmailUrl };
 }
 
 // List pending access requests, newest first.
@@ -113,6 +121,7 @@ adminAccessRequestsRouter.post('/:id/accept', async (req, res, next) => {
       mailtoSubject: email.subject,
       mailtoBody: email.body,
       mailto: email.mailto,
+      gmailUrl: email.gmailUrl,
       loginUrl,
     });
   } catch (err) {
