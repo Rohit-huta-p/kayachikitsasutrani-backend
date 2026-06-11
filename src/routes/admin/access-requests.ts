@@ -19,7 +19,10 @@ function buildAcceptanceEmail(args: {
   password: string;
   loginUrl: string;
 }) {
-  const subject = 'Chikitsa Sutra · Your login credentials';
+  // ASCII-only subject so the mailto URI parses cleanly in every mail
+  // client (some choke on multi-byte chars like "·" once they're
+  // percent-encoded into the URL).
+  const subject = 'Chikitsa Sutra - Your login credentials';
   const body = [
     `Hello ${args.name},`,
     ``,
@@ -33,10 +36,13 @@ function buildAcceptanceEmail(args: {
     `After your first sign-in, please update your password from your profile.`,
     ``,
     `Welcome aboard.`,
-    `— Chikitsa Sutra`,
+    `Chikitsa Sutra`,
   ].join('\n');
+  // RFC 6068: the address part of a mailto URI is NOT percent-encoded the
+  // same way query params are — leave the local-part and domain raw, only
+  // encode the query string.
   const mailto =
-    `mailto:${encodeURIComponent(args.email)}` +
+    `mailto:${args.email}` +
     `?subject=${encodeURIComponent(subject)}` +
     `&body=${encodeURIComponent(body)}`;
   return { subject, body, mailto };
