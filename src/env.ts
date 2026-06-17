@@ -21,7 +21,7 @@ const schema = z.object({
   SMTP_PASS: z.string().min(1).optional(),
   SMTP_FROM: z.string().email().optional(),
   SIGNUP_NOTIFY_EMAIL: z.string().email().optional(),
-  OPENAI_API_KEY: z.string().min(1).optional(),
+  OPENAI_API_KEY: z.string().optional().transform(v => v?.trim() || undefined),
 });
 
 export type Env = z.infer<typeof schema> & { FRONTEND_ORIGINS: string[] };
