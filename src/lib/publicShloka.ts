@@ -33,6 +33,7 @@ export interface PublicShloka {
     lines: PublicShlokaAsset[];
   };
   meaningAudio?: PublicShlokaAsset;
+  meaningTimings?: PublicWordTiming[];
   image?: PublicShlokaAsset;
   lines: PublicShlokaLine[];
   createdAt: string;
@@ -63,6 +64,10 @@ export function toPublicShloka(doc: ShlokaDoc, opts: ToPublicOpts = {}): PublicS
       lines: (doc.audio.lines ?? []).map(mapAsset),
     },
     meaningAudio: doc.meaningAudio ? mapAsset(doc.meaningAudio) : undefined,
+    meaningTimings:
+      (doc.meaningTimings?.length ?? 0) > 0
+        ? doc.meaningTimings!.map(w => ({ text: w.text, start: w.start, end: w.end }))
+        : undefined,
     image: doc.image ? mapAsset(doc.image) : undefined,
     // Always return an array. Prefer the new `images` array; fall back to
     // the legacy single `image` for shlokas that pre-date the carousel.

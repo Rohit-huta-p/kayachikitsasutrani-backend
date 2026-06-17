@@ -46,9 +46,8 @@ const shlokaSchema = new Schema(
     images: { type: [assetSchema], default: [] },
     status: { type: String, enum: ['draft', 'published'], required: true, default: 'draft', index: true },
     audio: { type: audioSchema, required: true },
-    // Optional spoken explanation of the meaning — plain play/pause on the
-    // student page, no word timings.
     meaningAudio: { type: assetSchema },
+    meaningTimings: { type: [wordTimingSchema], default: [] },
     image: { type: assetSchema },
     lines: { type: [lineSchema], default: [] },
     createdBy: { type: Schema.Types.ObjectId, ref: 'User', required: true },
