@@ -8,7 +8,6 @@ import { encodeCursor, decodeCursor } from '../../lib/cursor.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import { requireRole } from '../../middleware/requireRole.js';
 import { deleteAsset } from '../../lib/cloudinary.js';
-import { transcribeMeaningAudio } from '../../lib/whisper.js';
 
 export const adminShlokasRouter = Router();
 
@@ -45,6 +44,7 @@ const baseBodySchema = z.object({
     lines: z.array(assetSchema).optional().default([]),
   }),
   meaningAudio: assetSchema.nullish(),
+  meaningTimings: z.array(wordTimingSchema).optional().default([]),
   image: assetSchema.optional(),
   images: z.array(assetSchema).max(5).optional().default([]),
   lines: z.array(lineSchema),
@@ -138,11 +138,6 @@ adminShlokasRouter.post('/', async (req, res, next) => {
       res.status(409).json({ error: { code: 'SLUG_TAKEN', message: 'Slug already used' } });
       return;
     }
-    let meaningTimings: Array<{ text: string; start: number; end: number }> = [];
-    if (body.meaningAudio?.url) {
-      try { meaningTimings = await transcribeMeaningAudio(body.meaningAudio.url); }
-      catch (e) { console.error('[whisper] create – transcription failed:', e); }
-    }
     const doc = await Shloka.create({
       slug: body.slug,
       title: body.title,
@@ -154,7 +149,7 @@ adminShlokasRouter.post('/', async (req, res, next) => {
       status: body.status ?? 'draft',
       audio: body.audio,
       meaningAudio: body.meaningAudio ?? undefined,
-      meaningTimings,
+      meaningTimings: body.meaningTimings,
       image: body.image,
       images: body.images,
       lines: body.lines,
@@ -222,15 +217,10 @@ adminShlokasRouter.patch('/:id', async (req, res, next) => {
     // but the static types require DocumentArray. Cast to bypass — runtime is safe.
     if (body.audio !== undefined) doc.audio = body.audio as typeof doc.audio;
     if (body.meaningAudio !== undefined) {
-      const oldUrl = doc.meaningAudio?.url;
       doc.meaningAudio = (body.meaningAudio ?? undefined) as typeof doc.meaningAudio;
-      if (!body.meaningAudio) {
-        doc.meaningTimings = [] as unknown as typeof doc.meaningTimings;
-      } else if (body.meaningAudio.url !== oldUrl) {
-        try { doc.meaningTimings = await transcribeMeaningAudio(body.meaningAudio.url) as unknown as typeof doc.meaningTimings; }
-        catch (e) { console.error('[whisper] patch – transcription failed:', e); doc.meaningTimings = [] as unknown as typeof doc.meaningTimings; }
-      }
+      if (!body.meaningAudio) doc.meaningTimings = [] as unknown as typeof doc.meaningTimings;
     }
+    if (body.meaningTimings !== undefined) doc.meaningTimings = body.meaningTimings as unknown as typeof doc.meaningTimings;
     if (body.image !== undefined) doc.image = body.image as typeof doc.image;
     if (body.images !== undefined) doc.images = body.images as typeof doc.images;
     if (body.lines !== undefined) doc.lines = body.lines as typeof doc.lines;
