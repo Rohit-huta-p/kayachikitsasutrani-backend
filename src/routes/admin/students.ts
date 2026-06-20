@@ -35,6 +35,19 @@ adminStudentsRouter.get('/:id', validateObjectId('id', 'Student'), async (req, r
   }
 });
 
+adminStudentsRouter.delete('/:id', validateObjectId('id', 'Student'), async (req, res, next) => {
+  try {
+    const doc = await User.findOneAndDelete({ _id: req.params.id, role: 'student' });
+    if (!doc) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Student not found' } });
+      return;
+    }
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
 adminStudentsRouter.put('/:id/allowed-shlokas', validateObjectId('id', 'Student'), async (req, res, next) => {
   try {
     const { shlokaIds } = req.body;
