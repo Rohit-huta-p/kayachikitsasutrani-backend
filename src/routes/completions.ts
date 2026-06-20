@@ -6,6 +6,7 @@ import { ShlokaCompletion, type ShlokaCompletionDoc } from '../models/ShlokaComp
 import { User } from '../models/User.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 import { deriveAvatar } from '../lib/avatar.js';
+import { denseRank } from '../lib/denseRank.js';
 
 export const completionsRouter = Router();
 
@@ -70,23 +71,6 @@ completionsRouter.post('/:slug/complete', async (req, res, next) => {
     next(err);
   }
 });
-
-function denseRank<T>(items: T[], compare: (a: T, b: T) => number): Map<T, number> {
-  const sorted = [...items].sort(compare);
-  const ranks = new Map<T, number>();
-  let lastKey: T | null = null;
-  let lastRank = 0;
-  sorted.forEach((item, idx) => {
-    if (lastKey !== null && compare(lastKey, item) === 0) {
-      ranks.set(item, lastRank);
-    } else {
-      lastRank = idx + 1;
-      ranks.set(item, lastRank);
-      lastKey = item;
-    }
-  });
-  return ranks;
-}
 
 completionsRouter.get('/:slug/leaderboard', async (req, res, next) => {
   try {

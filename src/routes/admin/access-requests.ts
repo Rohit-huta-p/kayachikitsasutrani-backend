@@ -1,10 +1,10 @@
 import { Router } from 'express';
-import { Types } from 'mongoose';
 import { User } from '../../models/User.js';
 import { hashPassword, generateRandomPassword } from '../../lib/password.js';
 import { env } from '../../env.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import { requireRole } from '../../middleware/requireRole.js';
+import { validateObjectId } from '../../middleware/validateObjectId.js';
 
 export const adminAccessRequestsRouter = Router();
 
@@ -85,12 +85,8 @@ adminAccessRequestsRouter.get('/', async (req, res, next) => {
 //   - Return the plaintext password ONCE, plus a pre-built mailto link
 //     and subject/body so the admin UI can render a "copy" + "send email"
 //     pair without re-templating client-side.
-adminAccessRequestsRouter.post('/:id/accept', async (req, res, next) => {
+adminAccessRequestsRouter.post('/:id/accept', validateObjectId('id', 'Request'), async (req, res, next) => {
   try {
-    if (!Types.ObjectId.isValid(req.params.id)) {
-      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Request not found' } });
-      return;
-    }
     const user = await User.findOne({ _id: req.params.id, status: 'pending' });
     if (!user) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Request not found' } });
@@ -131,12 +127,8 @@ adminAccessRequestsRouter.post('/:id/accept', async (req, res, next) => {
 
 // Reject a pending request — deletes the user record entirely so the
 // email can be used to submit a fresh request later if needed.
-adminAccessRequestsRouter.post('/:id/reject', async (req, res, next) => {
+adminAccessRequestsRouter.post('/:id/reject', validateObjectId('id', 'Request'), async (req, res, next) => {
   try {
-    if (!Types.ObjectId.isValid(req.params.id)) {
-      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Request not found' } });
-      return;
-    }
     const result = await User.deleteOne({ _id: req.params.id, status: 'pending' });
     if (result.deletedCount === 0) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Request not found' } });
