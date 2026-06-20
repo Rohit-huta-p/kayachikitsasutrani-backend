@@ -10,6 +10,7 @@ export interface PublicUser {
   collegeName?: string;
   course?: string;
   bookmarks: string[];
+  allowedShlokas: string[];
   status: 'pending' | 'active';
   createdAt: string;
 }
@@ -25,6 +26,7 @@ export function toPublicUser(doc: UserDoc): PublicUser {
     collegeName: doc.collegeName ?? undefined,
     course: doc.course ?? undefined,
     bookmarks: (doc.bookmarks ?? []).map((b: unknown) => String(b)),
+    allowedShlokas: (doc.allowedShlokas ?? []).map((b: unknown) => String(b)),
     status: (doc.status as 'pending' | 'active' | undefined) ?? 'active',
     createdAt: (doc.createdAt as Date).toISOString(),
   };

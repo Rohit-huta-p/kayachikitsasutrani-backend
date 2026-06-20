@@ -1,40 +1,26 @@
 import { Router } from 'express';
-import { z } from 'zod';
-import { Types } from 'mongoose';
-import { Shloka } from '../models/Shloka.js';
+import { Shloka, type ShlokaDoc } from '../models/Shloka.js';
 import { toPublicShloka } from '../lib/publicShloka.js';
-import { encodeCursor, decodeCursor } from '../lib/cursor.js';
+import { paginationQuerySchema, paginate } from '../lib/pagination.js';
 import { requireAuth } from '../middleware/requireAuth.js';
 
 export const shlokasRouter = Router();
 
 shlokasRouter.use(requireAuth);
 
-const listQuerySchema = z.object({
-  limit: z.coerce.number().int().min(1).max(50).default(20),
-  cursor: z.string().optional(),
-});
-
 shlokasRouter.get('/', async (req, res, next) => {
   try {
-    const q = listQuerySchema.parse(req.query);
+    const q = paginationQuerySchema.parse(req.query);
     const filter: Record<string, unknown> = { status: 'published' };
-    const cursor = decodeCursor(q.cursor);
-    if (cursor) {
-      filter.$or = [
-        { createdAt: { $lt: new Date(cursor.createdAt) } },
-        { createdAt: new Date(cursor.createdAt), _id: { $lt: new Types.ObjectId(cursor.id) } },
-      ];
+    const allowed = req.user!.allowedShlokas;
+    if (allowed.length > 0 && req.user!.role !== 'admin') {
+      filter._id = { $in: allowed };
     }
-    const docs = await Shloka.find(filter).sort({ createdAt: -1, _id: -1 }).limit(q.limit + 1);
-    const hasMore = docs.length > q.limit;
-    const items = docs.slice(0, q.limit).map((d) => toPublicShloka(d, { includePublicIds: false }));
-    const last = docs[q.limit - 1];
-    const nextCursor =
-      hasMore && last
-        ? encodeCursor({ createdAt: (last.createdAt as Date).toISOString(), id: last._id.toString() })
-        : undefined;
-    res.json({ items, nextCursor });
+    const result = await paginate(
+      Shloka, filter, q.limit, q.cursor,
+      (d: ShlokaDoc) => toPublicShloka(d, { includePublicIds: false }),
+    );
+    res.json(result);
   } catch (err) {
     next(err);
   }
@@ -46,6 +32,13 @@ shlokasRouter.get('/:slug', async (req, res, next) => {
     if (!doc) {
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Shloka not found' } });
       return;
+    }
+    const allowed = req.user!.allowedShlokas;
+    if (allowed.length > 0 && req.user!.role !== 'admin') {
+      if (!allowed.includes(doc._id.toString())) {
+        res.status(403).json({ error: { code: 'FORBIDDEN', message: 'You do not have access to this shloka' } });
+        return;
+      }
     }
     res.json(toPublicShloka(doc, { includePublicIds: false }));
   } catch (err) {

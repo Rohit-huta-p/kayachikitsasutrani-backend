@@ -12,6 +12,9 @@ const userSchema = new Schema(
     course: { type: String, trim: true, maxlength: 200 },
     lastLoginAt: { type: Date },
     bookmarks: { type: [Schema.Types.ObjectId], ref: 'Shloka', default: [] },
+    // Empty array = access ALL published shlokas (default).
+    // Non-empty = restrict to only these shloka IDs.
+    allowedShlokas: { type: [Schema.Types.ObjectId], ref: 'Shloka', default: [] },
     // 'pending' = access request awaiting admin approval; passwordHash is
     // a throwaway random value and the user cannot log in.
     // 'active'  = approved, real password set by admin, user can log in.
