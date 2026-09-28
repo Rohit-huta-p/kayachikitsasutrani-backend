@@ -214,17 +214,42 @@ describe('GET /api/admin/analytics/students/:id', () => {
 });
 
 describe('GET /api/admin/analytics/students', () => {
-  it('returns headline numbers per student', async () => {
+  it('returns every student with headline numbers and a 14-day trail', async () => {
+    await User.create({ email: 'pending@x.test', passwordHash: 'x', role: 'student', name: 'Pending', status: 'pending' });
     const res = await request(app).get(`/api/admin/analytics/students?tz=${encodeURIComponent(TZ)}`).set('Cookie', adminCookie);
     expect(res.status).toBe(200);
-    const byId = new Map(res.body.items.map((r: { userId: string }) => [r.userId, r]));
-    expect(byId.get(student._id.toString())).toMatchObject({
+    const today = dayInZone(new Date(), TZ);
+    expect(res.body.today).toBe(today);
+    expect(res.body.days).toHaveLength(14);
+    expect(res.body.days[13]).toBe(today);
+    expect(res.body.items).toHaveLength(3); // students only, admins excluded
+
+    type Row = { email: string; last14Days: number[] };
+    const byEmail = new Map<string, Row>(res.body.items.map((r: Row) => [r.email, r]));
+    const asha = byEmail.get('asha@x.test')!;
+    expect(asha).toMatchObject({
+      name: 'Asha',
+      status: 'active',
       totalSeconds: 1850,
       last7Seconds: 1350,
       completed: 1,
+      available: 3,
       lastActiveAt: expect.any(String),
     });
-    expect(byId.get(other._id.toString())).toMatchObject({ totalSeconds: 0, completed: 1, lastActiveAt: null });
+    expect(asha.last14Days).toHaveLength(14);
+    expect(asha.last14Days[13]).toBe(1020);
+    expect(asha.last14Days[12]).toBe(300);
+    expect(asha.last14Days[10]).toBe(30);
+    expect(byEmail.get('ravi@x.test')).toMatchObject({ totalSeconds: 0, completed: 1, available: 3, lastActiveAt: null });
+    expect(byEmail.get('pending@x.test')).toMatchObject({ status: 'pending', completed: 0 });
+  });
+
+  it('narrows available and completed to the student catalog', async () => {
+    await User.updateOne({ _id: student._id }, { $set: { allowedShlokas: [s2._id] } });
+    const res = await request(app).get('/api/admin/analytics/students').set('Cookie', adminCookie);
+    const asha = res.body.items.find((r: { email: string }) => r.email === 'asha@x.test');
+    // Asha's completed s1 is outside her allow-list.
+    expect(asha).toMatchObject({ available: 1, completed: 0 });
   });
 
   it('student → 403', async () => {
