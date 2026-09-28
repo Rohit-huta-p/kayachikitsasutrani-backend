@@ -1,6 +1,8 @@
 import { Router } from 'express';
 import mongoose from 'mongoose';
 import { User } from '../../models/User.js';
+import { ActivityBucket } from '../../models/ActivityBucket.js';
+import { ActivitySession } from '../../models/ActivitySession.js';
 import { toPublicUser } from '../../lib/publicUser.js';
 import { paginationQuerySchema, paginate } from '../../lib/pagination.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
@@ -42,6 +44,10 @@ adminStudentsRouter.delete('/:id', validateObjectId('id', 'Student'), async (req
       res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Student not found' } });
       return;
     }
+    await Promise.all([
+      ActivityBucket.deleteMany({ userId: doc._id }),
+      ActivitySession.deleteMany({ userId: doc._id }),
+    ]);
     res.json({ ok: true });
   } catch (err) {
     next(err);

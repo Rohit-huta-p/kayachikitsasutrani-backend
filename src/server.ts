@@ -11,9 +11,11 @@ import { adminUploadsRouter } from './routes/admin/uploads.js';
 import { adminShlokasRouter } from './routes/admin/shlokas.js';
 import { adminStudentsRouter } from './routes/admin/students.js';
 import { adminAccessRequestsRouter } from './routes/admin/access-requests.js';
+import { adminAnalyticsRouter } from './routes/admin/analytics.js';
 import { shlokasRouter } from './routes/shlokas.js';
 import { completionsRouter } from './routes/completions.js';
 import { meRouter } from './routes/me.js';
+import { activityRouter } from './routes/activity.js';
 import { errorHandler } from './middleware/errorHandler.js';
 
 export function buildApp(): express.Express {
@@ -42,9 +44,11 @@ export function buildApp(): express.Express {
   app.use('/api/admin/shlokas', adminShlokasRouter);
   app.use('/api/admin/students', adminStudentsRouter);
   app.use('/api/admin/access-requests', adminAccessRequestsRouter);
+  app.use('/api/admin/analytics', adminAnalyticsRouter);
   app.use('/api/shlokas', shlokasRouter);
   app.use('/api/shlokas', completionsRouter);
   app.use('/api/me', meRouter);
+  app.use('/api/activity', activityRouter);
 
   app.use((_req, res) => {
     res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Route not found' } });

@@ -6,7 +6,7 @@ import { User } from '../models/User.js';
 import { toPublicShloka } from '../lib/publicShloka.js';
 import { toPublicUser } from '../lib/publicUser.js';
 import { requireAuth } from '../middleware/requireAuth.js';
-import { denseRank } from '../lib/denseRank.js';
+import { leaderboardPosition } from '../lib/leaderboardPosition.js';
 import { hashPassword, comparePassword } from '../lib/password.js';
 
 export const meRouter = Router();
@@ -95,16 +95,6 @@ meRouter.get('/completions', async (req, res, next) => {
       const sid = c.shlokaId.toString();
       const shloka = shlokaMap.get(sid);
       const all = allCompletionsByShloka.get(sid) || [];
-      const chronoRanks = denseRank(all, (a, b) => (a.completedAt as Date).getTime() - (b.completedAt as Date).getTime());
-      const timeRanks = denseRank(all, (a, b) => a.elapsedSeconds - b.elapsedSeconds);
-      const attemptsRanks = denseRank(all, (a, b) => a.attempts - b.attempts);
-      const sortedByAvg = [...all].sort((a, b) => {
-        const aAvg = ((chronoRanks.get(a) || 0) + (timeRanks.get(a) || 0) + (attemptsRanks.get(a) || 0)) / 3;
-        const bAvg = ((chronoRanks.get(b) || 0) + (timeRanks.get(b) || 0) + (attemptsRanks.get(b) || 0)) / 3;
-        if (aAvg !== bAvg) return aAvg - bAvg;
-        return (a.completedAt as Date).getTime() - (b.completedAt as Date).getTime();
-      });
-      const myIdx = sortedByAvg.findIndex((x) => x.userId.toString() === userId);
       return {
         shlokaId: sid,
         slug: shloka?.slug ?? '',
@@ -112,7 +102,7 @@ meRouter.get('/completions', async (req, res, next) => {
         completedAt: (c.completedAt as Date).toISOString(),
         attempts: c.attempts,
         elapsedSeconds: c.elapsedSeconds,
-        rank: myIdx >= 0 ? myIdx + 1 : 0,
+        rank: leaderboardPosition(all, userId),
         totalCompletions: all.length,
       };
     });
