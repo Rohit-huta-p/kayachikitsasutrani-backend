@@ -1,6 +1,7 @@
 import { Router } from 'express';
 import { z } from 'zod';
 import { User } from '../models/User.js';
+import { CredentialDelivery } from '../models/CredentialDelivery.js';
 import { hashPassword, comparePassword, generateRandomPassword } from '../lib/password.js';
 import { signSession } from '../lib/jwt.js';
 import { setSessionCookie, clearSessionCookie } from '../lib/cookies.js';
@@ -219,7 +220,13 @@ authRouter.post('/login', async (req, res, next) => {
     // Use updateOne instead of user.save() to bypass full-doc validation.
     // Old user docs may have capitalized gender ("Male") from a prior signup
     // form, which the current lowercase-enum schema would reject on save.
+    const isFirstLogin = !user.lastLoginAt;
     await User.updateOne({ _id: user._id }, { $set: { lastLoginAt: new Date() } });
+    // First-login credential purge (spec 2026-10-05): once the student signs
+    // in, they own their password — drop the server-stored copy if configured.
+    if (isFirstLogin && env().CREDENTIAL_RETENTION === 'until_first_login') {
+      await CredentialDelivery.deleteOne({ userId: user._id }).catch(() => {});
+    }
     const e = env();
     const token = signSession(user._id.toString(), e.JWT_SECRET);
     setSessionCookie(res, token, e.NODE_ENV === 'production');

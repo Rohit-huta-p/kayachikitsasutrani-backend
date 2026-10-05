@@ -1,6 +1,9 @@
 import { Router } from 'express';
 import { User } from '../../models/User.js';
+import { CredentialDelivery } from '../../models/CredentialDelivery.js';
 import { hashPassword, generateRandomPassword } from '../../lib/password.js';
+import { encryptSecret, decryptSecret, credentialCryptoReady } from '../../lib/credentialCrypto.js';
+import { sendMail, isMailConfigured } from '../../lib/mailer.js';
 import { env } from '../../env.js';
 import { requireAuth } from '../../middleware/requireAuth.js';
 import { requireRole } from '../../middleware/requireRole.js';
@@ -99,6 +102,36 @@ adminAccessRequestsRouter.post('/:id/accept', validateObjectId('id', 'Request'),
       { $set: { passwordHash, status: 'active' } },
     );
 
+    // Persist the credential so it stays on the Approved list from any device
+    // (spec 2026-10-05). Best-effort — never fail an approval over this.
+    try {
+      if (credentialCryptoReady()) {
+        const sealed = encryptSecret(password);
+        await CredentialDelivery.findOneAndUpdate(
+          { userId: user._id },
+          {
+            $set: {
+              email: user.email,
+              name: user.name,
+              passwordCiphertext: sealed.ciphertext,
+              passwordIv: sealed.iv,
+              passwordTag: sealed.tag,
+              approvedByAdminId: req.user?.id,
+              approvedAt: new Date(),
+              deliveredAt: null,
+              revealedCount: 0,
+              lastRevealedAt: null,
+            },
+          },
+          { upsert: true },
+        );
+      } else {
+        console.warn(`[access-requests] CREDENTIAL_ENC_KEY unset — credential for ${user._id} not stored`);
+      }
+    } catch (err) {
+      console.error('[access-requests] failed to persist approved credential', err);
+    }
+
     const e = env();
     const origin = e.FRONTEND_ORIGINS[0] ?? '';
     const loginUrl = origin ? `${origin}/login` : '/login';
@@ -135,6 +168,171 @@ adminAccessRequestsRouter.post('/:id/reject', validateObjectId('id', 'Request'),
       return;
     }
     res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// List every approved (active) student, newest first — including those
+// approved before this feature existed (they simply have no stored password).
+// For students with a stored credential the password is decrypted for the
+// authenticated admin and fresh email links are rebuilt; otherwise `password`
+// is null (purged, undecryptable, key absent, or never stored) and the admin
+// can issue a new one with regenerate.
+adminAccessRequestsRouter.get('/approved', async (_req, res, next) => {
+  try {
+    const students = await User.find({ role: 'student', status: 'active' })
+      .sort({ createdAt: -1, _id: -1 })
+      .lean();
+    const deliveries = await CredentialDelivery.find({ userId: { $in: students.map((s) => s._id) } });
+    const delMap = new Map(deliveries.map((d) => [d.userId.toString(), d]));
+
+    const e = env();
+    const origin = e.FRONTEND_ORIGINS[0] ?? '';
+    const loginUrl = origin ? `${origin}/login` : '/login';
+
+    const revealed: string[] = [];
+    const items = students.map((u) => {
+      const d = delMap.get(u._id.toString());
+      let password: string | null = null;
+      if (d && d.passwordCiphertext && d.passwordIv && d.passwordTag && credentialCryptoReady()) {
+        try {
+          password = decryptSecret({ ciphertext: d.passwordCiphertext, iv: d.passwordIv, tag: d.passwordTag });
+          revealed.push(d._id.toString());
+        } catch {
+          password = null; // e.g. key rotated — treat as unavailable
+        }
+      }
+      const links = password ? buildAcceptanceEmail({ name: u.name, email: u.email, password, loginUrl }) : null;
+      return {
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        age: u.age ?? undefined,
+        gender: u.gender ?? undefined,
+        collegeName: u.collegeName ?? undefined,
+        course: u.course ?? undefined,
+        approvedAt: ((d?.approvedAt as Date) ?? (u.createdAt as Date) ?? new Date()).toISOString(),
+        deliveredAt: d?.deliveredAt ? (d.deliveredAt as Date).toISOString() : null,
+        password,
+        loginUrl,
+        mailtoSubject: links?.subject,
+        mailtoBody: links?.body,
+        mailto: links?.mailto,
+        gmailUrl: links?.gmailUrl,
+      };
+    });
+
+    if (revealed.length > 0) {
+      await CredentialDelivery.updateMany(
+        { _id: { $in: revealed } },
+        { $inc: { revealedCount: 1 }, $set: { lastRevealedAt: new Date() } },
+      );
+    }
+
+    res.json({ items });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Purge the stored credential (does NOT deactivate the student). Idempotent.
+adminAccessRequestsRouter.delete('/approved/:id', validateObjectId('id', 'Credential'), async (req, res, next) => {
+  try {
+    await CredentialDelivery.deleteOne({ userId: req.params.id });
+    res.json({ ok: true });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Mint a fresh password for an active student; re-hash, re-store (encrypted),
+// and return it once with email links — same shape as accept.
+adminAccessRequestsRouter.post('/:id/regenerate', validateObjectId('id', 'Request'), async (req, res, next) => {
+  try {
+    const user = await User.findOne({ _id: req.params.id, status: 'active', role: 'student' });
+    if (!user) {
+      res.status(404).json({ error: { code: 'NOT_FOUND', message: 'Active student not found' } });
+      return;
+    }
+    const password = generateRandomPassword(14);
+    const passwordHash = await hashPassword(password);
+    await User.updateOne({ _id: user._id }, { $set: { passwordHash } });
+
+    const e = env();
+    const origin = e.FRONTEND_ORIGINS[0] ?? '';
+    const loginUrl = origin ? `${origin}/login` : '/login';
+    const emailMsg = buildAcceptanceEmail({ name: user.name, email: user.email, password, loginUrl });
+
+    try {
+      if (credentialCryptoReady()) {
+        const sealed = encryptSecret(password);
+        await CredentialDelivery.findOneAndUpdate(
+          { userId: user._id },
+          {
+            $set: {
+              email: user.email,
+              name: user.name,
+              passwordCiphertext: sealed.ciphertext,
+              passwordIv: sealed.iv,
+              passwordTag: sealed.tag,
+              approvedByAdminId: req.user?.id,
+              approvedAt: new Date(),
+              deliveredAt: null,
+              revealedCount: 0,
+              lastRevealedAt: null,
+            },
+          },
+          { upsert: true },
+        );
+      }
+    } catch (err) {
+      console.error('[access-requests] failed to persist regenerated credential', err);
+    }
+
+    res.json({
+      id: user._id.toString(),
+      email: user.email,
+      name: user.name,
+      password,
+      mailtoSubject: emailMsg.subject,
+      mailtoBody: emailMsg.body,
+      mailto: emailMsg.mailto,
+      gmailUrl: emailMsg.gmailUrl,
+      loginUrl,
+    });
+  } catch (err) {
+    next(err);
+  }
+});
+
+// Email the credential directly via nodemailer (lib/mailer.ts).
+adminAccessRequestsRouter.post('/approved/:id/send-email', validateObjectId('id', 'Credential'), async (req, res, next) => {
+  try {
+    if (!isMailConfigured()) {
+      res.status(503).json({ error: { code: 'SMTP_NOT_CONFIGURED', message: 'Email is not configured on the server' } });
+      return;
+    }
+    const d = await CredentialDelivery.findOne({ userId: req.params.id });
+    if (!d || !d.passwordCiphertext || !d.passwordIv || !d.passwordTag || !credentialCryptoReady()) {
+      res.status(409).json({ error: { code: 'CREDENTIAL_UNAVAILABLE', message: 'No stored password — regenerate first' } });
+      return;
+    }
+    let password: string;
+    try {
+      password = decryptSecret({ ciphertext: d.passwordCiphertext, iv: d.passwordIv, tag: d.passwordTag });
+    } catch {
+      res.status(409).json({ error: { code: 'CREDENTIAL_UNAVAILABLE', message: 'Stored password could not be read' } });
+      return;
+    }
+    const e = env();
+    const origin = e.FRONTEND_ORIGINS[0] ?? '';
+    const loginUrl = origin ? `${origin}/login` : '/login';
+    const msg = buildAcceptanceEmail({ name: d.name, email: d.email, password, loginUrl });
+    await sendMail({ to: d.email, subject: msg.subject, text: msg.body });
+    const deliveredAt = new Date();
+    await CredentialDelivery.updateOne({ _id: d._id }, { $set: { deliveredAt } });
+    res.json({ ok: true, deliveredAt: deliveredAt.toISOString() });
   } catch (err) {
     next(err);
   }
