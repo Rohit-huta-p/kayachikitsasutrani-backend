@@ -34,3 +34,19 @@ services:
         sync: false
       - key: CREDENTIAL_RETENTION
         value: until_removed
+      # SMTP (optional) — powers the one-click "Send email" of credentials and
+      # the request-signup notifications. Set real values in the Render
+      # dashboard; SMTP_PORT must be numeric. If email is unused, remove these
+      # entries (leaving them blank will fail validation on boot).
+      - key: SMTP_HOST
+        sync: false
+      - key: SMTP_PORT
+        sync: false
+      - key: SMTP_USER
+        sync: false
+      - key: SMTP_PASS
+        sync: false
+      - key: SMTP_FROM
+        sync: false
+      - key: SIGNUP_NOTIFY_EMAIL
+        sync: false
