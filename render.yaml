@@ -30,3 +30,7 @@ services:
         sync: false
       - key: CLOUDINARY_API_SECRET
         sync: false
+      - key: CREDENTIAL_ENC_KEY
+        sync: false
+      - key: CREDENTIAL_RETENTION
+        value: until_removed

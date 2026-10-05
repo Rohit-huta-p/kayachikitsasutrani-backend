@@ -21,6 +21,13 @@ const schema = z.object({
   SMTP_PASS: z.string().min(1).optional(),
   SMTP_FROM: z.string().email().optional(),
   SIGNUP_NOTIFY_EMAIL: z.string().email().optional(),
+  // Approved access-request credential persistence (spec 2026-10-05).
+  // 32-byte key as base64 (recommended) or 64-char hex. If unset, approved
+  // credentials are NOT stored and GET /approved returns password: null.
+  CREDENTIAL_ENC_KEY: z.string().min(1).optional(),
+  // 'until_removed' (default): keep until an admin removes it.
+  // 'until_first_login': purge once the student signs in the first time.
+  CREDENTIAL_RETENTION: z.enum(['until_removed', 'until_first_login']).default('until_removed'),
 });
 
 export type Env = z.infer<typeof schema> & { FRONTEND_ORIGINS: string[] };
