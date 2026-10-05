@@ -173,24 +173,29 @@ adminAccessRequestsRouter.post('/:id/reject', validateObjectId('id', 'Request'),
   }
 });
 
-// List approved accounts that still have a stored credential, newest first.
-// Decrypts the password for the authenticated admin and rebuilds fresh email
-// links. `password` is null when purged, undecryptable, or the key is absent.
+// List every approved (active) student, newest first — including those
+// approved before this feature existed (they simply have no stored password).
+// For students with a stored credential the password is decrypted for the
+// authenticated admin and fresh email links are rebuilt; otherwise `password`
+// is null (purged, undecryptable, key absent, or never stored) and the admin
+// can issue a new one with regenerate.
 adminAccessRequestsRouter.get('/approved', async (_req, res, next) => {
   try {
-    const deliveries = await CredentialDelivery.find().sort({ approvedAt: -1, _id: -1 });
-    const users = await User.find({ _id: { $in: deliveries.map((d) => d.userId) } }).lean();
-    const userMap = new Map(users.map((u) => [u._id.toString(), u]));
+    const students = await User.find({ role: 'student', status: 'active' })
+      .sort({ createdAt: -1, _id: -1 })
+      .lean();
+    const deliveries = await CredentialDelivery.find({ userId: { $in: students.map((s) => s._id) } });
+    const delMap = new Map(deliveries.map((d) => [d.userId.toString(), d]));
 
     const e = env();
     const origin = e.FRONTEND_ORIGINS[0] ?? '';
     const loginUrl = origin ? `${origin}/login` : '/login';
 
     const revealed: string[] = [];
-    const items = deliveries.map((d) => {
-      const u = userMap.get(d.userId.toString());
+    const items = students.map((u) => {
+      const d = delMap.get(u._id.toString());
       let password: string | null = null;
-      if (d.passwordCiphertext && d.passwordIv && d.passwordTag && credentialCryptoReady()) {
+      if (d && d.passwordCiphertext && d.passwordIv && d.passwordTag && credentialCryptoReady()) {
         try {
           password = decryptSecret({ ciphertext: d.passwordCiphertext, iv: d.passwordIv, tag: d.passwordTag });
           revealed.push(d._id.toString());
@@ -198,17 +203,17 @@ adminAccessRequestsRouter.get('/approved', async (_req, res, next) => {
           password = null; // e.g. key rotated — treat as unavailable
         }
       }
-      const links = password ? buildAcceptanceEmail({ name: d.name, email: d.email, password, loginUrl }) : null;
+      const links = password ? buildAcceptanceEmail({ name: u.name, email: u.email, password, loginUrl }) : null;
       return {
-        id: d.userId.toString(),
-        name: u?.name ?? d.name,
-        email: u?.email ?? d.email,
-        age: u?.age ?? undefined,
-        gender: u?.gender ?? undefined,
-        collegeName: u?.collegeName ?? undefined,
-        course: u?.course ?? undefined,
-        approvedAt: ((d.approvedAt as Date) ?? new Date()).toISOString(),
-        deliveredAt: d.deliveredAt ? (d.deliveredAt as Date).toISOString() : null,
+        id: u._id.toString(),
+        name: u.name,
+        email: u.email,
+        age: u.age ?? undefined,
+        gender: u.gender ?? undefined,
+        collegeName: u.collegeName ?? undefined,
+        course: u.course ?? undefined,
+        approvedAt: ((d?.approvedAt as Date) ?? (u.createdAt as Date) ?? new Date()).toISOString(),
+        deliveredAt: d?.deliveredAt ? (d.deliveredAt as Date).toISOString() : null,
         password,
         loginUrl,
         mailtoSubject: links?.subject,

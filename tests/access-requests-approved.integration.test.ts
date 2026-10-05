@@ -112,9 +112,28 @@ describe('approved credential persistence', () => {
     const del = await request(app).delete(`/api/admin/access-requests/approved/${pending._id}`).set('Cookie', admin);
     expect(del.status).toBe(200);
     const list = await request(app).get('/api/admin/access-requests/approved').set('Cookie', admin);
-    expect(list.body.items).toHaveLength(0);
+    // Student stays an approved account, now with no stored password.
+    expect(list.body.items).toHaveLength(1);
+    expect(list.body.items[0].password).toBeNull();
     const user = await User.findById(pending._id).lean();
     expect(user?.status).toBe('active');
+  });
+
+  it('lists previously-approved students with no stored credential as password: null', async () => {
+    const admin = await seedAdmin();
+    // An "old" approval: an active student with no CredentialDelivery record.
+    await User.create({
+      email: 'old@x.test',
+      passwordHash: await hashPassword('whatever'),
+      role: 'student',
+      name: 'Old Oak',
+      status: 'active',
+    });
+    const list = await request(app).get('/api/admin/access-requests/approved').set('Cookie', admin);
+    expect(list.status).toBe(200);
+    const old = list.body.items.find((i: { email: string }) => i.email === 'old@x.test');
+    expect(old).toBeTruthy();
+    expect(old.password).toBeNull();
   });
 
   it('regenerate issues a new password: old login fails, new works, /approved shows new', async () => {
@@ -143,6 +162,7 @@ describe('approved credential persistence', () => {
     expect(acc.status).toBe(200);
     expect(acc.body.password).toHaveLength(14); // still returned once
     const list = await request(app).get('/api/admin/access-requests/approved').set('Cookie', admin);
-    expect(list.body.items).toHaveLength(0); // nothing stored without a key
+    expect(list.body.items).toHaveLength(1); // student still approved…
+    expect(list.body.items[0].password).toBeNull(); // …but nothing stored without a key
   });
 });

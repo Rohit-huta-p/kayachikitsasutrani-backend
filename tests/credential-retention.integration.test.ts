@@ -76,8 +76,9 @@ describe('credential retention: until_first_login', () => {
     // Student logs in for the first time.
     expect((await request(app).post('/api/auth/login').send({ email: 'f@x.test', password: pw })).status).toBe(200);
 
-    // Credential is purged.
+    // Credential is purged — the student stays listed with no stored password.
     list = await request(app).get('/api/admin/access-requests/approved').set('Cookie', adminCookie);
-    expect(list.body.items).toHaveLength(0);
+    expect(list.body.items).toHaveLength(1);
+    expect(list.body.items[0].password).toBeNull();
   });
 });
