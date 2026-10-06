@@ -59,6 +59,22 @@ function buildAcceptanceEmail(args: {
   return { subject, body, mailto, gmailUrl };
 }
 
+// Turn a nodemailer failure into an actionable, admin-facing message.
+function describeMailError(err: unknown): string {
+  const e = (err ?? {}) as { code?: string; responseCode?: number };
+  const code = e.code ?? '';
+  if (code === 'EAUTH' || e.responseCode === 535) {
+    return 'Gmail rejected the login (EAUTH). Check SMTP_USER and that SMTP_PASS is a valid 16-character App Password (2-Step Verification must be on for that account).';
+  }
+  if (['ETIMEDOUT', 'ESOCKET', 'ECONNECTION', 'ECONNREFUSED', 'ENETUNREACH'].includes(code)) {
+    return `Could not reach the mail server (${code}). Check SMTP_HOST and SMTP_PORT.`;
+  }
+  if (code === 'EENVELOPE') {
+    return 'The sender or recipient address was rejected (EENVELOPE). Check SMTP_FROM.';
+  }
+  return 'Could not send the email — the mail server was unreachable or rejected it. Check the SMTP settings.';
+}
+
 // List pending access requests, newest first.
 adminAccessRequestsRouter.get('/', async (req, res, next) => {
   try {
@@ -333,12 +349,7 @@ adminAccessRequestsRouter.post('/approved/:id/send-email', validateObjectId('id'
       await sendMail({ to: d.email, subject: msg.subject, text: msg.body });
     } catch (mailErr) {
       console.error('[access-requests] send-email failed', mailErr);
-      res.status(502).json({
-        error: {
-          code: 'EMAIL_SEND_FAILED',
-          message: 'Could not send the email — the mail server was unreachable or rejected it. Check the SMTP settings.',
-        },
-      });
+      res.status(502).json({ error: { code: 'EMAIL_SEND_FAILED', message: describeMailError(mailErr) } });
       return;
     }
     const deliveredAt = new Date();
