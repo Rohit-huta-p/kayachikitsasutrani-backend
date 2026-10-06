@@ -34,6 +34,10 @@ services:
         sync: false
       - key: CREDENTIAL_RETENTION
         value: until_removed
+      # Brevo HTTPS email API — preferred on Render (free tier blocks SMTP).
+      # Set the key in the dashboard; sender address is SMTP_FROM.
+      - key: BREVO_API_KEY
+        sync: false
       # SMTP (optional) — powers the one-click "Send email" of credentials and
       # the request-signup notifications. Set real values in the Render
       # dashboard; SMTP_PORT must be numeric. If email is unused, remove these
