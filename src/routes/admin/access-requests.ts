@@ -158,6 +158,24 @@ adminAccessRequestsRouter.post('/:id/accept', validateObjectId('id', 'Request'),
       loginUrl,
     });
 
+    // Send the credentials automatically on approval. Best-effort: approval
+    // already succeeded, so a mail failure is reported (emailSent/emailError),
+    // not thrown — the admin still gets the password + manual send buttons.
+    let emailSent = false;
+    let emailError: string | undefined;
+    if (isMailConfigured()) {
+      try {
+        await sendMail({ to: user.email, subject: email.subject, text: email.body });
+        emailSent = true;
+        await CredentialDelivery.updateOne({ userId: user._id }, { $set: { deliveredAt: new Date() } }).catch(() => {});
+      } catch (err) {
+        console.error('[access-requests] auto-send on accept failed', err);
+        emailError = describeMailError(err);
+      }
+    } else {
+      emailError = 'Email is not configured on the server.';
+    }
+
     res.json({
       id: user._id.toString(),
       email: user.email,
@@ -168,6 +186,8 @@ adminAccessRequestsRouter.post('/:id/accept', validateObjectId('id', 'Request'),
       mailto: email.mailto,
       gmailUrl: email.gmailUrl,
       loginUrl,
+      emailSent,
+      emailError,
     });
   } catch (err) {
     next(err);
