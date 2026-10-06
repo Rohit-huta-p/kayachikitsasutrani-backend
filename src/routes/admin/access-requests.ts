@@ -329,7 +329,18 @@ adminAccessRequestsRouter.post('/approved/:id/send-email', validateObjectId('id'
     const origin = e.FRONTEND_ORIGINS[0] ?? '';
     const loginUrl = origin ? `${origin}/login` : '/login';
     const msg = buildAcceptanceEmail({ name: d.name, email: d.email, password, loginUrl });
-    await sendMail({ to: d.email, subject: msg.subject, text: msg.body });
+    try {
+      await sendMail({ to: d.email, subject: msg.subject, text: msg.body });
+    } catch (mailErr) {
+      console.error('[access-requests] send-email failed', mailErr);
+      res.status(502).json({
+        error: {
+          code: 'EMAIL_SEND_FAILED',
+          message: 'Could not send the email — the mail server was unreachable or rejected it. Check the SMTP settings.',
+        },
+      });
+      return;
+    }
     const deliveredAt = new Date();
     await CredentialDelivery.updateOne({ _id: d._id }, { $set: { deliveredAt } });
     res.json({ ok: true, deliveredAt: deliveredAt.toISOString() });
