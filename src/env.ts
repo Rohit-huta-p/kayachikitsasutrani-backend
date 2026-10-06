@@ -21,6 +21,10 @@ const schema = z.object({
   SMTP_PASS: z.string().min(1).optional(),
   SMTP_FROM: z.string().email().optional(),
   SIGNUP_NOTIFY_EMAIL: z.string().email().optional(),
+  // Brevo (Sendinblue) HTTP email API. When set, email is sent via Brevo over
+  // HTTPS instead of SMTP — so it works on hosts that block outbound SMTP
+  // ports (e.g. Render's free tier). The sender address is SMTP_FROM.
+  BREVO_API_KEY: z.string().min(1).optional(),
   // Approved access-request credential persistence (spec 2026-10-05).
   // 32-byte key as base64 (recommended) or 64-char hex. If unset, approved
   // credentials are NOT stored and GET /approved returns password: null.

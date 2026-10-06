@@ -59,9 +59,16 @@ function buildAcceptanceEmail(args: {
   return { subject, body, mailto, gmailUrl };
 }
 
-// Turn a nodemailer failure into an actionable, admin-facing message.
+// Turn a mail-send failure (Brevo API or nodemailer) into an actionable message.
 function describeMailError(err: unknown): string {
-  const e = (err ?? {}) as { code?: string; responseCode?: number };
+  const e = (err ?? {}) as { code?: string; responseCode?: number; name?: string; message?: string };
+  const message = typeof e.message === 'string' ? e.message : '';
+  if (message.startsWith('Brevo API')) {
+    return `Email provider (Brevo) rejected the request — ${message}. Check BREVO_API_KEY and that the sender (SMTP_FROM) is a verified Brevo sender.`;
+  }
+  if (e.name === 'AbortError') {
+    return 'Email request timed out reaching the provider.';
+  }
   const code = e.code ?? '';
   if (code === 'EAUTH' || e.responseCode === 535) {
     return 'Gmail rejected the login (EAUTH). Check SMTP_USER and that SMTP_PASS is a valid 16-character App Password (2-Step Verification must be on for that account).';

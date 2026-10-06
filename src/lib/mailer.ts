@@ -38,12 +38,55 @@ export interface MailMessage {
   replyTo?: string;
 }
 
+const SENDER_NAME = 'Chikitsa Sutra';
+
+// Send via Brevo's transactional email API over HTTPS (port 443) — works on
+// hosts that block outbound SMTP ports (e.g. Render free). The sender address
+// (SMTP_FROM) must be a verified Brevo sender.
+async function sendViaBrevo(msg: MailMessage): Promise<void> {
+  const e = env();
+  const from = e.SMTP_FROM ?? e.SMTP_USER;
+  if (!from) throw new Error('No sender address configured — set SMTP_FROM.');
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), 10_000);
+  try {
+    const res = await fetch('https://api.brevo.com/v3/smtp/email', {
+      method: 'POST',
+      headers: {
+        'api-key': e.BREVO_API_KEY as string,
+        'content-type': 'application/json',
+        accept: 'application/json',
+      },
+      body: JSON.stringify({
+        sender: { email: from, name: SENDER_NAME },
+        to: [{ email: msg.to }],
+        subject: msg.subject,
+        textContent: msg.text,
+        ...(msg.html ? { htmlContent: msg.html } : {}),
+        ...(msg.replyTo ? { replyTo: { email: msg.replyTo } } : {}),
+      }),
+      signal: controller.signal,
+    });
+    if (!res.ok) {
+      const body = await res.text().catch(() => '');
+      throw new Error(`Brevo API ${res.status}: ${body.slice(0, 300)}`);
+    }
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
 export async function sendMail(msg: MailMessage): Promise<void> {
+  const e = env();
+  // Prefer the Brevo HTTP API when configured — it survives SMTP port blocks.
+  if (e.BREVO_API_KEY) {
+    await sendViaBrevo(msg);
+    return;
+  }
   const t = getTransporter();
   if (!t) {
-    throw new Error('SMTP is not configured on this server.');
+    throw new Error('Email is not configured on this server.');
   }
-  const e = env();
   await t.sendMail({
     from: e.SMTP_FROM ?? e.SMTP_USER,
     to: msg.to,
@@ -55,5 +98,5 @@ export async function sendMail(msg: MailMessage): Promise<void> {
 }
 
 export function isMailConfigured(): boolean {
-  return getTransporter() !== null;
+  return !!env().BREVO_API_KEY || getTransporter() !== null;
 }
